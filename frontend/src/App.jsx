@@ -11,6 +11,14 @@ import { GuidanceResponse } from './pages/GuidanceResponse';
 import { KnowledgeAndRequirements } from './pages/KnowledgeAndRequirements';
 import { StudentProfile } from './pages/StudentProfile';
 
+// Mentor Experience Dashboard
+import MentorLayout from './pages/mentor/MentorLayout';
+import MentorDashboard from './pages/mentor/MentorDashboard';
+import Escalations from './pages/mentor/Escalations';
+import EscalationDetails from './pages/mentor/EscalationDetails';
+import Students from './pages/mentor/Students';
+import StudentDetails from './pages/mentor/StudentDetails';
+
 // Protected Route Guard for Student Experience
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useAuth();
@@ -48,6 +56,16 @@ export default function App() {
             <Route path="profile" element={<StudentProfile />} />
           </Route>
 
+          {/* Mentor Experience Dashboard (Frontend 2) */}
+          <Route path="/mentor" element={<MentorLayout />}>
+            <Route index element={<Navigate to="dashboard" replace />} />
+            <Route path="dashboard" element={<MentorDashboard />} />
+            <Route path="escalations" element={<Escalations />} />
+            <Route path="escalations/:id" element={<EscalationDetails />} />
+            <Route path="students" element={<Students />} />
+            <Route path="students/:id" element={<StudentDetails />} />
+          </Route>
+
           {/* Safe Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
@@ -55,3 +73,4 @@ export default function App() {
     </AuthProvider>
   );
 }
+
