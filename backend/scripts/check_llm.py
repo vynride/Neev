@@ -1,6 +1,6 @@
 """Live check: does tool calling work on each API shape for both models?
 
-Run once keys are in .env:  uv run python scripts/check_llm.py
+Run once keys are in .env:  uv run python -m scripts.check_llm
 Set LLM_API in .env to whichever shape passes.
 """
 
