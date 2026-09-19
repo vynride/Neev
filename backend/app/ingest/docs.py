@@ -1,13 +1,17 @@
 """Turn a project's documents and meeting transcripts into searchable chunks."""
 
+import logging
 import re
 
+from openai import OpenAIError
 from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.mongo import DOCUMENTS, MEETINGS, get_mongo
 from app.llm.client import get_llm
 from app.models import Chunk
+
+log = logging.getLogger(__name__)
 
 SEGMENTS_PER_CHUNK = 6
 MAX_CHUNK_CHARS = 1800
@@ -73,9 +77,14 @@ async def ingest_project_text(db: AsyncSession, project_id: str, embed: bool = T
             )
 
     if embed and rows:
-        vectors = await get_llm().embed([r.text for r in rows])
-        for row, vec in zip(rows, vectors, strict=True):
-            row.embedding = vec
+        try:
+            vectors = await get_llm().embed([r.text for r in rows])
+        except OpenAIError:
+            # Chunks without vectors are still found by keyword search
+            log.warning("Embedding failed for %s; storing chunks without vectors", project_id)
+        else:
+            for row, vec in zip(rows, vectors, strict=True):
+                row.embedding = vec
 
     await db.execute(delete(Chunk).where(Chunk.project_id == project_id))
     db.add_all(rows)
