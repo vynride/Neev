@@ -171,7 +171,7 @@ What is left of the 12 to 18 seconds is model time: about 3 s to classify, 4 s t
 
 `make check`: 15 of 15. `make smoke`: passes. Deflection in that run: 0.833 over 6 questions.
 
-## Step 13: ClickUp, tested against a real workspace (PR #14)
+## Step 13: ClickUp, tested against a real workspace (PR #15)
 
 Built and verified against a real free-plan workspace, not a mock.
 
