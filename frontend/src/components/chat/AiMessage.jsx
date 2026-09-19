@@ -57,7 +57,7 @@ const feedbackButton = {
 };
 
 // One reply from the AI mentor, with its sources, links, client draft and feedback buttons
-export const AiMessage = ({ msg, project, isLatest, onFeedback, feedbackBusy }) => {
+export const AiMessage = ({ msg, project, isLatest, mentorReplied, onFeedback, feedbackBusy }) => {
   const [copied, setCopied] = useState(false);
   // Only the newest reply can be rated; rating an older one would restart a finished thread
   const canGiveFeedback = isLatest && msg.next_action !== 'escalated' && msg.resolved == null && msg.message_id;
@@ -110,14 +110,14 @@ export const AiMessage = ({ msg, project, isLatest, onFeedback, feedbackBusy }) 
         </div>
       )}
 
-      {msg.next_action === 'escalated' && (
+      {msg.next_action === 'escalated' && !mentorReplied && (
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--color-accent-strong)', fontWeight: 600 }}>
           <Clock3 size={14} /> Waiting for your mentor. Their reply will appear here.
         </div>
       )}
 
       {(canGiveFeedback || msg.resolved === true || msg.category) && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', paddingTop: '12px', borderTop: '1px solid var(--color-border-subtle)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', paddingTop: canGiveFeedback ? '12px' : 0, borderTop: canGiveFeedback ? '1px solid var(--color-border-subtle)' : 'none' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minHeight: '28px' }}>
             {canGiveFeedback && !feedbackBusy && (
               <>

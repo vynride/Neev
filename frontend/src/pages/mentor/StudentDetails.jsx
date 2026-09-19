@@ -107,7 +107,7 @@ export default function StudentDetails() {
     <>
       {back}
 
-      <div className="card" style={{ padding: '22px 26px', display: 'flex', alignItems: 'center', gap: '18px', flexWrap: 'wrap' }}>
+      <div className="card" style={{ padding: '22px 26px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
         <Avatar id={student.id} name={student.name} size={72} />
         <div style={{ flex: 1, minWidth: '220px' }}>
           <h1 style={{ fontSize: '1.5rem', fontWeight: 700, letterSpacing: '-0.02em' }}>{student.name}</h1>
@@ -119,7 +119,7 @@ export default function StudentDetails() {
         </div>
       </div>
 
-      <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
+      <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
         <StatTile icon={MessagesSquare} label="Questions to the AI mentor" value={student.questions} />
         <StatTile icon={LifeBuoy} tone="accent" label="Escalated to you" value={student.escalated} hint={selfServed == null ? undefined : `${selfServed}% resolved without you`} />
         <StatTile icon={GraduationCap} label="Answered from past mentor answers" value={student.answered_from_kb} />
@@ -128,8 +128,8 @@ export default function StudentDetails() {
 
       {error && <div className="notice-error">{error}</div>}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.5fr) minmax(0, 1fr)', gap: '18px', alignItems: 'start' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.5fr) minmax(0, 1fr)', gap: '12px', alignItems: 'start' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <SectionCard
             title="What the AI mentor believes about this student"
             hint={student.memory_edited_by ? 'Last corrected by a mentor' : 'Built from their chats. Correct it if it is wrong: the AI reads this before every answer.'}
@@ -177,7 +177,7 @@ export default function StudentDetails() {
           </SectionCard>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {codeguru && (
             <SectionCard title="CodeGuru" hint={`Monthly average ${codeguru.monthly_avg} · capstone ${codeguru.capstone}`}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>

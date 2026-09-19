@@ -31,7 +31,7 @@ export const KnowledgeAndRequirements = () => {
   );
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       {/* Header Banner */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         <div

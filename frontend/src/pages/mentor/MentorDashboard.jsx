@@ -51,7 +51,7 @@ export default function MentorDashboard() {
     <>
       <PageHeader title={`Hello, ${user.name.split(' ')[0]}`} subtitle={subtitle} />
 
-      <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '16px' }}>
+      <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '12px' }}>
         <StatTile
           icon={LifeBuoy}
           tone={waiting.length ? 'accent' : 'primary'}
@@ -81,7 +81,7 @@ export default function MentorDashboard() {
       </div>
 
       {/* Cards in the same row share one height, so the bottoms line up */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: '16px', alignItems: 'stretch' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: '12px', alignItems: 'stretch' }}>
         <SectionCard
           flush
           title="Waiting for you"
@@ -128,7 +128,7 @@ export default function MentorDashboard() {
         </SectionCard>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: '16px', alignItems: 'stretch' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: '12px', alignItems: 'stretch' }}>
         <SectionCard title="Your projects" hint="Task progress comes live from ClickUp">
           <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px' }}>
             {projects.map((p) => {

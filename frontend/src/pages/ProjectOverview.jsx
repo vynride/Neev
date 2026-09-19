@@ -75,7 +75,7 @@ export const ProjectOverview = () => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       {/* Top Header */}
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -115,9 +115,9 @@ export const ProjectOverview = () => {
 
       {/* Tab Contents */}
       {activeTab === 'overview' && (
-        <div className="tab-enter" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.6fr) minmax(0, 1.1fr)', gap: '28px' }}>
+        <div className="tab-enter" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.6fr) minmax(0, 1.1fr)', gap: '12px' }}>
           {/* Left Column: Project Summary & Technologies */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {/* Project Summary Card */}
             <Card>
               <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text-main)', marginBottom: '12px' }}>
@@ -160,7 +160,7 @@ export const ProjectOverview = () => {
           </div>
 
           {/* Right Column: Project Progress Donut & Team */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {/* Project Progress Card with Donut Chart */}
             <Card>
               <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text-main)', marginBottom: '20px' }}>

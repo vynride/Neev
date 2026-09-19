@@ -63,12 +63,12 @@ export const StudentDashboard = () => {
       : 'You have no open tasks right now.';
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <PageHeader title={`${greeting}, ${user.name.split(' ')[0]}`} subtitle={subtitle}>
         <Button onClick={() => navigate('/student/mentor')} variant="primary" icon={Sparkles}>Ask the AI mentor</Button>
       </PageHeader>
 
-      <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '16px' }}>
+      <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '12px' }}>
         <StatTile icon={ListChecks} label="My open tasks" value={openCount} hint={`${mine.length} assigned to you in total`} onClick={() => navigate('/student/project?tab=tasks')} />
         <StatTile icon={AlarmClock} tone={myOverdue ? 'accent' : 'primary'} label="Past the due date" value={myOverdue} hint={myOverdue ? 'Worth doing first' : 'Nothing is late'} onClick={() => navigate('/student/project?tab=tasks')} />
         <StatTile icon={Eye} label="Waiting for review" value={mine.filter((t) => t.status === 'review').length} hint="Finished, not yet checked" />
@@ -76,7 +76,7 @@ export const StudentDashboard = () => {
       </div>
 
       {/* Row 1: what to do next, beside the project. Cards in a row share one height. */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: '16px', alignItems: 'stretch' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: '12px', alignItems: 'stretch' }}>
         <SectionCard
           flush
           title="What to do next"
@@ -137,7 +137,7 @@ export const StudentDashboard = () => {
       </div>
 
       {/* Row 2: three equal cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '16px', alignItems: 'stretch' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px', alignItems: 'stretch' }}>
         <SectionCard flush title="Pick up where you left off" hint="Your recent chats with the AI mentor">
           {sessions.length === 0 ? (
             <EmptyState icon={MessageSquare}>No chats yet. Ask your first question, however small.</EmptyState>

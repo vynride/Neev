@@ -250,6 +250,7 @@ export const MentorChat = () => {
                       msg={msg}
                       project={project}
                       isLatest={idx === messages.length - 1}
+                      mentorReplied={answeredTickets.has(msg.ticket_id)}
                       onFeedback={handleFeedback}
                       feedbackBusy={feedbackBusyId === msg.id}
                     />

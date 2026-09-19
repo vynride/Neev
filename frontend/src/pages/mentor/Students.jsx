@@ -40,7 +40,7 @@ export default function Students() {
       {!students && !error && <Loading />}
       {students && shown.length === 0 && <div className="card"><EmptyState icon={Users}>No students match.</EmptyState></div>}
 
-      <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '14px' }}>
+      <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '12px' }}>
         {shown.map((s) => (
           <button key={`${s.id}-${s.project.id}`} className="card is-clickable" onClick={() => navigate(`/mentor/students/${s.id}`)} style={{ padding: '18px 20px', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

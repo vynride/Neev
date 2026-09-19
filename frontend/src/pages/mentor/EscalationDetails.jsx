@@ -61,9 +61,9 @@ export default function EscalationDetails() {
   return (
     <>
       {back}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.9fr) minmax(300px, 1fr)', gap: '18px', alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.9fr) minmax(300px, 1fr)', gap: '12px', alignItems: 'start' }}>
         {/* Main column: the question and the answer */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div className="card" style={{ padding: '22px 24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
               <Badge variant={isFyi ? 'blue' : ticket.status === 'open' ? 'orange' : 'green'}>
@@ -147,7 +147,7 @@ export default function EscalationDetails() {
         </div>
 
         {/* Side rail: who, which project, what the AI looked at */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <SectionCard title="Student">
             <button className="hover-row" onClick={() => navigate(`/mentor/students/${ticket.student.id}`)} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '6px', margin: '-6px', borderRadius: 'var(--radius-md)', textAlign: 'left' }}>
               <Avatar id={ticket.student.id} name={ticket.student.name} size={44} />

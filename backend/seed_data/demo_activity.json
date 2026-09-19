@@ -1,0 +1,211 @@
+[
+  {
+    "id": "demo_s01", "student": "s1", "project": "p1", "days_ago": 6, "outcome": "ask_client",
+    "turns": [
+      {"role": "student", "content": "Rohini asked for a \"modern dashboard with analytics\" in the kickoff but never said which numbers she wants. My task says to build the AnalyticsTab. What should I build?"},
+      {"role": "assistant", "category": "requirements_communication", "next_action": "ask_client", "resolved": true,
+       "content": "Do not build yet. This one is not yours or mine to decide: only Rohini knows which numbers help her run Threadline.\n\n**What we know**\n- In the kickoff she asked for a dashboard \"with analytics\" and said she would think about which numbers.\n- The Statement of Work lists an admin dashboard but names no metrics, so anything you guess may be rework you are not paid for.\n- Your task `Send analytics questions to client and agree metrics` comes before `Extend AnalyticsTab` for exactly this reason.\n\n**What to do**\n1. Send her a short message with 4 or 5 options, so she can choose instead of inventing.\n2. Get her answer in writing.\n3. Then extend the tab. The repo already returns total users, products, sales and revenue, plus daily sales for 7 days, so some options are nearly free.",
+       "draft_client_message": "Hi Rohini,\n\nFor the admin dashboard, I want to show the numbers that are most useful to you. Could you pick up to four from this list?\n\n1. Sales and revenue per day for the last 7 or 30 days\n2. Best-selling products\n3. Orders by category (sarees, dupattas, and so on)\n4. How many carts are left without paying\n5. Coupon usage\n\nIf there is a number you check today on Instagram or in your notebook, tell me and I will see if we can include it.\n\nOnce you confirm, I will finish this part within the week.\n\nThank you,\nAnanya",
+       "citations": [
+         {"type": "meeting", "ref": "p1-m1@00:00:00", "snippet": "Rohini: I want a modern dashboard with analytics. Which numbers? Let me think about it."},
+         {"type": "task", "ref": "p1-t7", "snippet": "Send analytics questions to client and agree metrics"},
+         {"type": "code", "ref": "backend/controllers/analytics.controller.js:1", "snippet": "getAnalyticsData returns users, products, totalSales, totalRevenue"}
+       ]}
+    ]
+  },
+  {
+    "id": "demo_s02", "student": "s1", "project": "p1", "days_ago": 5, "outcome": "answered",
+    "turns": [
+      {"role": "student", "content": "Rohini wants the product card buttons in indigo, not mustard. Where is that colour set? I changed the Tailwind config but the button did not change."},
+      {"role": "assistant", "category": "development_debugging", "next_action": "answered", "resolved": true,
+       "content": "The button does not read the theme colour. Its classes are written directly on the element, so your config change cannot reach it.\n\nOpen `frontend/src/components/ProductCard.jsx` and look at the `Add to cart` button near the bottom. You will see fixed Tailwind classes for the background and the hover state.\n\n**Try this**\n1. Replace those two colour classes with your indigo ones.\n2. Keep mustard only on the cart button in `Navbar.jsx`, as Rohini asked in the progress call.\n3. Search the `components` folder for the old class name, in case it is used elsewhere.\n\nI have not written the classes for you. You are strong on the frontend, so tell me what you changed and I will check it with you.",
+       "citations": [
+         {"type": "code", "ref": "frontend/src/components/ProductCard.jsx:60", "snippet": "button className with fixed background and hover colour classes"},
+         {"type": "meeting", "ref": "p1-m2@00:00:00", "snippet": "Rohini: make the product buttons indigo, keep mustard only for the cart."}
+       ]}
+    ]
+  },
+  {
+    "id": "demo_s03", "student": "s1", "project": "p1", "days_ago": 3, "outcome": "retry_resolved", "struggle": "mongodb aggregation",
+    "turns": [
+      {"role": "student", "content": "How do I get sales per day from MongoDB for the chart? I do not understand aggregate at all."},
+      {"role": "assistant", "category": "development_debugging", "next_action": "answered", "attempt": 1, "resolved": false,
+       "content": "The repo already does this in `getDailySalesData` inside `backend/controllers/analytics.controller.js`. It uses an aggregation pipeline with `$match` on the date range, then `$group` by day with `$sum` for sales and revenue, then `$sort`.\n\nRead that function first, then change the date range you pass in.",
+       "citations": [{"type": "code", "ref": "backend/controllers/analytics.controller.js:40", "snippet": "Order.aggregate([{ $match }, { $group }, { $sort }])"}]},
+      {"role": "assistant", "category": "development_debugging", "next_action": "answered", "attempt": 2, "resolved": true,
+       "content": "Let me go slower. Think of `aggregate` as a line of helpers, each passing a smaller pile of orders to the next.\n\n```mermaid\nflowchart LR\n  A[All orders] --> B[\"$match: keep the last 7 days\"]\n  B --> C[\"$group: one pile per day\"]\n  C --> D[\"$sum: count and add up each pile\"]\n  D --> E[\"$sort: oldest day first\"]\n```\n\n1. **`$match`** throws away orders outside your dates. Like a `WHERE` in SQL.\n2. **`$group`** puts orders with the same day into one pile. The `_id` of the group is the day.\n3. **`$sum`** inside the group adds up each pile: `1` per order gives the count, `$totalAmount` gives the revenue.\n4. **`$sort`** orders the piles by day.\n\n**Try it without code first:** open MongoDB Compass, go to the `orders` collection, open the Aggregations tab and add the stages one at a time. You will see the pile get smaller at each step.\n\nThen read `getDailySalesData` again. Each stage there should now make sense.",
+       "citations": [{"type": "code", "ref": "backend/controllers/analytics.controller.js:40", "snippet": "getDailySalesData groups orders by day"}],
+       "resources": [{"title": "MongoDB: Aggregation pipeline", "url": "https://www.mongodb.com/docs/manual/core/aggregation-pipeline/", "why": "Official guide, with the same stages shown one at a time"}]}
+    ]
+  },
+  {
+    "id": "demo_s04", "student": "s2", "project": "p1", "days_ago": 4, "outcome": "answered",
+    "turns": [
+      {"role": "student", "content": "Three customers paid on Stripe but there is no order in our database. I think they closed the tab before the success page loaded. Is that possible?"},
+      {"role": "assistant", "category": "architecture_design", "next_action": "answered", "resolved": true,
+       "content": "Yes, and the code confirms it. The order is created only in `checkoutSuccess` in `backend/controllers/payment.controller.js`, which runs when the browser returns to the success page. If the customer closes the tab, loses network or the phone sleeps, Stripe has the money and you have no order.\n\nYour mentor answered this same design question before: the success page is a convenience, the **webhook** is the source of truth.\n\n```mermaid\nsequenceDiagram\n  participant C as Customer\n  participant S as Stripe\n  participant B as Our backend\n  C->>S: Pays\n  S-->>B: checkout.session.completed (webhook)\n  B->>B: Create the order if it does not exist\n  S-->>C: Redirect to success page\n  C->>B: checkoutSuccess (may never happen)\n  B->>B: Order already exists, just show it\n```\n\n**Next steps**\n1. Add a webhook route that verifies Stripe's signature and creates the order.\n2. Make order creation safe to run twice: look up the order by `stripeSessionId` first.\n3. For the three lost orders, the session ids are in the Stripe dashboard. Whether to refund or fulfil them is a business decision, not a code one.",
+       "citations": [
+         {"type": "code", "ref": "backend/controllers/payment.controller.js:84", "snippet": "checkoutSuccess creates the Order after the redirect"},
+         {"type": "kb", "ref": "kb3", "snippet": "Our app marks an order as paid when the user comes back to the success page. Is that enough?"},
+         {"type": "task", "ref": "p1-t6", "snippet": "Investigate paid orders that do not appear"}
+       ],
+       "resources": [{"title": "Stripe: Receive events in your webhook endpoint", "url": "https://docs.stripe.com/webhooks", "why": "How to verify the signature and handle checkout.session.completed"}]}
+    ]
+  },
+  {
+    "id": "demo_s05", "student": "s2", "project": "p1", "days_ago": 0, "hours_ago": 3, "outcome": "ticket_open",
+    "ticket": {"id": "demo_tkt_01", "category": "scope_timeline_contract",
+      "tried": "The AI mentor judged that this needs a mentor's decision: it is about money owed to customers and who bears the cost.",
+      "draft_answer": "My suggestion, for you to confirm or change:\n\n1. Tell Rohini today, before she hears it from a customer. Three paid orders were not recorded because of a gap in how orders are saved, and it is being fixed.\n2. Let Rohini choose for each customer: fulfil the order (the payment is valid) or refund it. It is her business and her customers.\n3. The Stripe fee on a refund is not returned. Since the gap was in our build, I would offer to absorb that small fee as goodwill, but that is your call as mentor.\n4. The webhook fix is a bug fix under the Statement of Work, not a change request."},
+    "turns": [
+      {"role": "student", "content": "About the three customers who paid but have no order: should we refund them or ship the products? And Rohini's assistant is asking who pays the Stripe fee if we refund. I do not know what to say."},
+      {"role": "assistant", "category": "scope_timeline_contract", "next_action": "escalated",
+       "content": "I have sent this to your mentor, Sunita Deshmukh, with your question, what we tried and the relevant project context, so you will not need to explain it again. Their reply will appear here in this chat."}
+    ]
+  },
+  {
+    "id": "demo_s06", "student": "s2", "project": "p1", "days_ago": 1, "outcome": "fyi",
+    "ticket": {"id": "demo_fyi_01", "kind": "fyi", "category": "requirements_communication",
+      "tried": "The student is being messaged late at night by the client's assistant and said she feels like quitting.",
+      "draft_answer": "(The AI mentor's reply to the student is in the chat.)"},
+    "turns": [
+      {"role": "student", "content": "Rohini's assistant messaged me on WhatsApp at 11 pm, angry about the missing orders, and again at 6 am. I could not sleep. Honestly I feel like quitting this project."},
+      {"role": "assistant", "category": "requirements_communication", "next_action": "answered", "resolved": true,
+       "content": "I am sorry. Being messaged at 11 pm and 6 am about work is not something you have to accept, and feeling shaken by it is reasonable. It says nothing about your ability: you are the one who found the cause of the missing orders.\n\n**For now**\n- You do not need to reply to messages outside working hours. A calm reply at 10 am is professional.\n- Keep client communication in the agreed channel. The Statement of Work names email and the weekly call, not personal WhatsApp.\n\n**A reply you could send in the morning**\n> Good morning. I have seen your messages. The cause of the missing orders is found and the fix is in progress. I will share an update in today's email by 5 pm. For anything urgent, please email so the whole team sees it.\n\nI have also let your mentor know that this is happening, only so that she is aware. You do not have to handle a difficult client alone.",
+       "citations": [{"type": "doc", "ref": "sow.md#Client responsibilities", "snippet": "Communication happens over email and the weekly call."}]}
+    ]
+  },
+  {
+    "id": "demo_s07", "student": "s5", "project": "p3", "days_ago": 6, "outcome": "ask_client",
+    "turns": [
+      {"role": "student", "content": "Sameer now wants three roles: Admin, Editor and Viewer. In the kickoff he said only one admin and everyone else the same. Do I just build it?"},
+      {"role": "assistant", "category": "scope_timeline_contract", "next_action": "ask_client", "resolved": true,
+       "content": "No. This is a new feature, and the Statement of Work has a process for exactly this.\n\n**Why it is a change**\n- Kickoff decision: single admin, all other staff equal.\n- Three roles touch the user model, every protected route and most screens. That is days of work, not a tweak.\n- Your task `Write change request for Admin/Editor/Viewer roles` already exists, so your mentor expects this path.\n\n**What to do**\n1. Thank him for the idea. It is a sensible request for an events company.\n2. Send a change request: what it includes, the extra days and the effect on the launch date.\n3. Build only after he approves it in writing.",
+       "draft_client_message": "Hi Sameer,\n\nThank you for the suggestion about Admin, Editor and Viewer roles. It makes sense for how your team works.\n\nIn our kickoff we agreed on one admin with all other staff having the same access, so this is an addition to the agreed scope. I will send a short change request by tomorrow with what it includes, the extra time needed and how it affects the launch date. Once you approve it, I will start.\n\nThe current work continues on schedule in the meantime.\n\nRegards,\nLakshmi",
+       "citations": [
+         {"type": "meeting", "ref": "p3-m1@00:00:00", "snippet": "Sameer: one admin, everyone else has the same access."},
+         {"type": "doc", "ref": "sow.md#Change-request process", "snippet": "New features are written up with effort and impact, and start after written approval."},
+         {"type": "task", "ref": "p3-t7", "snippet": "Write change request for Admin/Editor/Viewer roles"}
+       ]}
+    ]
+  },
+  {
+    "id": "demo_s08", "student": "s5", "project": "p3", "days_ago": 4, "outcome": "ticket_resolved", "struggle": "scheduled jobs",
+    "ticket": {"id": "demo_tkt_02", "category": "deployment_handoff", "minutes_to_answer": 9,
+      "tried": "The AI mentor answered twice and the student marked both as not resolving it.\n\nFirst attempt: suggested node-cron inside the backend process.\n\nSecond attempt: explained that Render's free web service sleeps, so an in-process cron will miss 9 am, and suggested a paid instance.",
+      "draft_answer": "An in-process scheduler will not fire while a free Render service is asleep. Options: a Render Cron Job service that calls the API at 9 am, or an external scheduler. Which one fits the client's budget is your decision.",
+      "final_answer": "Good question, and the AI was right about the cause: a free Render web service sleeps, so `node-cron` inside it will miss 9 am.\n\nDo this instead. It costs the client nothing:\n\n1. Move the reminder logic into one function and expose it as `POST /api/jobs/daily-reminders`.\n2. Protect it with a long secret in a header, read from an environment variable. Reject everything else with 401.\n3. Use a free external scheduler (cron-job.org is fine) to call that URL at 9:00 IST every day. The call wakes the service and runs the job.\n4. Make the job safe to run twice: store the date of the last reminder per task, and skip if it is today.\n5. Put the scheduler account in the client's name and list it in the handover note.\n\nIf Northgate later moves to a paid plan, switch to a Render Cron Job and delete the external one. Do not promise exact-minute delivery in the handover: say \"around 9 am\"."},
+    "turns": [
+      {"role": "student", "content": "Reminder emails must go at 9 am every day. I used node-cron and it works on my laptop, but on Render staging nothing is sent in the morning."},
+      {"role": "assistant", "category": "deployment_handoff", "next_action": "answered", "attempt": 1, "resolved": false,
+       "content": "Check two things first: the server's timezone (Render runs in UTC, so 9 am IST is 03:30 UTC) and whether the schedule is registered when the app starts. The reminder code is in `backend/src/services/notificationService.ts`.",
+       "citations": [{"type": "code", "ref": "backend/src/services/notificationService.ts:1", "snippet": "notification service"}]},
+      {"role": "assistant", "category": "deployment_handoff", "next_action": "answered", "attempt": 2, "resolved": false,
+       "content": "If the timezone is right, the likely cause is that a free Render web service goes to sleep after 15 minutes without traffic. A scheduler inside a sleeping process cannot fire. A paid instance would fix it, but that is a cost for the client."},
+      {"role": "assistant", "category": "deployment_handoff", "next_action": "escalated",
+       "content": "I have sent this to your mentor, Sunita Deshmukh, with your question, what we tried and the relevant project context, so you will not need to explain it again. Their reply will appear here in this chat."},
+      {"role": "mentor"}
+    ]
+  },
+  {
+    "id": "demo_s09", "student": "s4", "project": "p3", "days_ago": 1, "outcome": "kb_hit",
+    "kb_from_ticket": "demo_tkt_02",
+    "turns": [
+      {"role": "student", "content": "How do I run the daily overdue email on Render staging? My scheduled job never runs in the morning."},
+      {"role": "assistant", "category": "deployment_handoff", "next_action": "answered", "attempt": 1, "resolved": false,
+       "content": "Render runs in UTC, so check that your schedule is set for 03:30 UTC. Also confirm the scheduler is started when the app boots."},
+      {"role": "assistant", "category": "deployment_handoff", "next_action": "answered", "attempt": 2, "resolved": false,
+       "content": "If the time is right, the free service is probably asleep at 9 am, so nothing inside it can fire."},
+      {"role": "assistant", "category": "deployment_handoff", "next_action": "answered", "attempt": 3, "from_kb": true, "resolved": true, "kb_answer": true}
+    ]
+  },
+  {
+    "id": "demo_s10", "student": "s4", "project": "p3", "days_ago": 5, "outcome": "answered", "struggle": "secrets in git",
+    "turns": [
+      {"role": "student", "content": "I committed the .env file with the email API key and pushed it to GitHub. I deleted the file and pushed again. Is it fine now?"},
+      {"role": "assistant", "category": "git_workflow", "next_action": "answered", "resolved": true,
+       "content": "Not yet. Deleting the file removes it from the latest commit only. The key is still readable in the history, so treat it as leaked.\n\n**Do these in order**\n1. **Rotate the key now** in the email provider's dashboard. This is the only step that makes the old key useless.\n2. Put the new key in Render's environment variables and in your local `.env`. Never in the repo.\n3. Add `.env` to `.gitignore` and commit that.\n4. Tell your teammate and your mentor in one line. It happens to everyone once, and hiding it is the only real mistake.\n\nRewriting history to remove the old commit is optional once the key is rotated. On a shared branch it causes more trouble than it solves, so ask your mentor before you try it.",
+       "resources": [{"title": "GitHub: Removing sensitive data from a repository", "url": "https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/removing-sensitive-data-from-a-repository", "why": "Explains why rotating the secret comes first"}]}
+    ]
+  },
+  {
+    "id": "demo_s11", "student": "s4", "project": "p3", "days_ago": 0, "hours_ago": 6, "outcome": "ticket_open",
+    "ticket": {"id": "demo_tkt_03", "category": "scope_timeline_contract",
+      "tried": "The student asked for their mentor.",
+      "draft_answer": "Pooja is on two projects with deadlines in the same fortnight: SkillBridge (GoDaddy domain and Vercel production) and Pulse PM (Render staging and handover note). Her open tasks are all deployment, which is her weakest CodeGuru area (devops).\n\nSuggested reply: acknowledge the load, then sequence the work. SkillBridge's domain task is blocked anyway until the client says where their email is hosted, so Pulse staging can go first this week. Consider pairing her with Lakshmi for the Render deployment."},
+    "turns": [
+      {"role": "student", "content": "I would like to talk to my mentor about this: I am on SkillBridge and Pulse PM and both have deployment tasks due in the same two weeks. I cannot finish both and I do not know which one to tell first.\n\nWhat I have tried so far: I made a list of all my tasks with dates. Four of them are deployment and I am slow at that."},
+      {"role": "assistant", "category": "scope_timeline_contract", "next_action": "escalated",
+       "content": "I have sent this to your mentor, Sunita Deshmukh, with your question, what we tried and the relevant project context, so you will not need to explain it again. Their reply will appear here in this chat."}
+    ]
+  },
+  {
+    "id": "demo_s12", "student": "s3", "project": "p2", "days_ago": 5, "outcome": "ask_client",
+    "turns": [
+      {"role": "student", "content": "Devendra keeps saying the site \"feels slow and non-responsive\" but he cannot say which page. I ran Lighthouse and the score is 91. What do I fix?"},
+      {"role": "assistant", "category": "requirements_communication", "next_action": "ask_client", "resolved": true,
+       "content": "Nothing yet. You cannot fix what you cannot reproduce, and the Statement of Work says so: a performance complaint needs the page, the device and what happened.\n\nNotice the word \"non-responsive\". A client may mean *it does not react when I tap*, or *it does not fit my phone screen*. Those are different problems from slow loading, and a Lighthouse score of 91 on your laptop tells you little about his phone on mobile data.\n\n**Ask for one concrete example**, and make it easy: a screen recording is quicker for him than describing it.",
+       "draft_client_message": "Hi Devendra sir,\n\nThank you for the feedback that the site feels slow. I want to fix exactly what you are seeing, so could you help me with one example?\n\n1. Which page were you on (home, course details, video player, payment)?\n2. Were you on your phone or the office computer, and on Wi-Fi or mobile data?\n3. What happened: did the page take long to open, did a button not react, or did the layout look wrong?\n\nA short screen recording from your phone would be perfect. Once I can see it, fixing it is part of our agreed work at no extra charge.\n\nThank you,\nMeenakshi",
+       "citations": [
+         {"type": "doc", "ref": "sow.md#Revision rounds", "snippet": "Performance complaints need an example: which page, which device, what happened."},
+         {"type": "meeting", "ref": "p2-m2@00:00:00", "snippet": "Devendra: it feels slow and non-responsive, on my phone and the office computer."},
+         {"type": "task", "ref": "p2-t6", "snippet": "Clarify what 'slow and non-responsive' means"}
+       ]}
+    ]
+  },
+  {
+    "id": "demo_s13", "student": "s3", "project": "p2", "days_ago": 3, "outcome": "ticket_resolved",
+    "ticket": {"id": "demo_tkt_04", "category": "scope_timeline_contract", "minutes_to_answer": 6,
+      "tried": "The student asked for their mentor.",
+      "draft_answer": "The Statement of Work covers one-time payment per course. Subscriptions change the payment model, the purchase records and access rules, so this is a change request, not a revision. Suggest a written estimate and let the client decide.",
+      "final_answer": "You read it correctly: this is not small, and you should not absorb it.\n\n**What to say to Devendra** (on the call, then confirm by email):\n\"Subscriptions are a good idea for SkillBridge. They change how payment and course access work, so they are outside what we agreed. I will send you a short estimate, and we can add it after launch so your launch date does not move.\"\n\n**For the estimate**\n- Stripe subscriptions, a plan model, access checks on every course, handling failed renewals and cancellations. Realistically 8 to 10 working days for the two of you.\n- Price it at the same day rate as the main contract. Do not discount because he called it small.\n- Offer it as phase 2 after handover. Most clients accept that once they see the launch date is protected.\n\nNever say \"no\". Say \"yes, as a change request\". Send me the draft before it goes to him."},
+    "turns": [
+      {"role": "student", "content": "I would like to talk to my mentor about this: Devendra wants monthly subscriptions added. He says it is a small change because Stripe is already there. The kickoff said one-time payment only. How do I say no without upsetting him, and what should it cost?"},
+      {"role": "assistant", "category": "scope_timeline_contract", "next_action": "escalated",
+       "content": "I have sent this to your mentor, Farhan Qureshi, with your question, what we tried and the relevant project context, so you will not need to explain it again. Their reply will appear here in this chat."},
+      {"role": "mentor"}
+    ]
+  },
+  {
+    "id": "demo_s14", "student": "s4", "project": "p2", "days_ago": 2, "outcome": "answered",
+    "turns": [
+      {"role": "student", "content": "Before I point the GoDaddy domain to Vercel, how do I find out where SkillBridge's email is hosted? I am scared of breaking their email."},
+      {"role": "assistant", "category": "deployment_handoff", "next_action": "answered", "resolved": true,
+       "content": "Good instinct. Email breaks when someone replaces the nameservers or deletes the MX records. You can check this yourself in two minutes, without any password.\n\n**Find the email host**\n1. Look up the domain's **MX records** with any online MX lookup tool.\n2. Read the result: `google.com` means Google Workspace, `outlook.com` means Microsoft 365, `secureserver.net` means GoDaddy email.\n\n**Connect the site without touching email**\n1. In GoDaddy DNS, **do not change nameservers**.\n2. Add only what Vercel asks for: an `A` record for the root domain and a `CNAME` for `www`.\n3. Leave every `MX` and `TXT` record as it is.\n4. Take a screenshot of the DNS page before you change anything, so you can put it back.\n\nYour mentor has also answered a question about domain access before: ask the client to add you as a delegate in GoDaddy, never to share the registrar password.",
+       "citations": [
+         {"type": "kb", "ref": "kb5", "snippet": "The client wants the site on their own domain and offered to share the registrar password."},
+         {"type": "task", "ref": "p2-t7", "snippet": "Find out where the client's email is hosted"}
+       ],
+       "resources": [{"title": "Vercel: Adding and configuring a custom domain", "url": "https://vercel.com/docs/domains/working-with-domains/add-a-domain", "why": "The exact records Vercel needs"}]}
+    ]
+  },
+  {
+    "id": "demo_s15", "student": "s3", "project": "p2", "days_ago": 0, "hours_ago": 1, "outcome": "ticket_open", "struggle": "environment variables",
+    "ticket": {"id": "demo_tkt_05", "category": "deployment_handoff",
+      "tried": "The AI mentor answered twice and the student marked both as not resolving it.\n\nFirst attempt: check that the variable starts with VITE_ and is set in the Vercel project for the Production environment.\n\nSecond attempt: Vite reads variables at build time, so redeploy after adding them.",
+      "draft_answer": "Both earlier suggestions are correct and she has done them. What remains: the repo has two Vercel projects (`client` and `server`), each with its own `vercel.json`. The variable was most likely added to the server project, while the client build needs it. Ask her to open the client project's settings and confirm `VITE_BACKEND_URL` exists there for Production, then redeploy with the build cache cleared."},
+    "turns": [
+      {"role": "student", "content": "The production build on Vercel shows a blank courses page. In the console the API URL is undefined. It works locally and on preview."},
+      {"role": "assistant", "category": "deployment_handoff", "next_action": "answered", "attempt": 1, "resolved": false,
+       "content": "An undefined URL in production almost always means the environment variable is missing in that environment. Vite only exposes variables that start with `VITE_`, and Vercel keeps separate values for Preview and Production. Check the Production value in the project settings.",
+       "citations": [{"type": "code", "ref": "client/vite.config.js:1", "snippet": "Vite config for the client"}]},
+      {"role": "assistant", "category": "deployment_handoff", "next_action": "answered", "attempt": 2, "resolved": false,
+       "content": "If the value is there, remember that Vite puts variables into the code when it builds. A variable added after the last deployment does nothing until you redeploy."},
+      {"role": "assistant", "category": "deployment_handoff", "next_action": "escalated",
+       "content": "I have sent this to your mentor, Farhan Qureshi, with your question, what we tried and the relevant project context, so you will not need to explain it again. Their reply will appear here in this chat."}
+    ]
+  },
+  {
+    "id": "demo_s16", "student": "s5", "project": "p3", "days_ago": 2, "outcome": "answered",
+    "turns": [
+      {"role": "student", "content": "What is pending for me this week on Pulse PM?"},
+      {"role": "assistant", "category": "scope_timeline_contract", "next_action": "answered", "resolved": true,
+       "content": "Three things, in the order I would do them:\n\n1. **Email notifications** (in progress). The assigned and overdue emails work. The 9 am schedule is the open part, and your mentor has answered how to run it on Render.\n2. **Admin creates staff accounts** is in review. Nothing for you to do until it is checked.\n3. **Change request for the three roles** (to do). Sameer is waiting for it, and it is short to write, so send it before you start new code.\n\nThe deadline is close, so the change request matters most: it protects the launch date.",
+       "citations": [
+         {"type": "task", "ref": "p3-t6", "snippet": "Email notifications: assigned, due tomorrow, overdue"},
+         {"type": "task", "ref": "p3-t9", "snippet": "Admin creates staff accounts from user management page"},
+         {"type": "task", "ref": "p3-t7", "snippet": "Write change request for Admin/Editor/Viewer roles"}
+       ]}
+    ]
+  }
+]

@@ -95,7 +95,7 @@ export default function MentorLayout() {
           <UserMenu showProfile={false} />
         </header>
         <main style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
-          <div key={location.pathname} className="page-enter" style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: '22px' }}>
+          <div key={location.pathname} className="page-enter" style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <Outlet />
           </div>
         </main>

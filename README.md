@@ -55,3 +55,11 @@ cd frontend && npm install && npm run dev # app on http://localhost:3000
 The frontend proxies `/api` to the backend, so there is nothing to configure. Log in by picking a
 seeded account: a student (`s1`-`s5`) opens the student app, a mentor (`m1`, `m2`) opens the mentor
 desk. To see an escalation end to end, keep a student and a mentor open in two browser profiles.
+
+## Demo data
+
+`make demo` loads a fortnight of realistic activity: 16 student chats across the three projects,
+open tickets with AI drafts, resolved tickets with the mentor's answer (saved to the knowledge
+base), one reused answer, one FYI, metrics and recurring struggles. It makes no model calls.
+Everything it writes has an id starting with `demo_`; `make demo ARGS=--force` replaces only that.
+After a `make seed`, run `make ingest` and then `make demo`.

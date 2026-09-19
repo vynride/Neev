@@ -50,11 +50,11 @@ export const StudentProfile = () => {
   const mentor = project?.team.find((m) => m.role === 'mentor');
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '28px', width: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
       {/* Top Profile Header */}
       <Card style={{ padding: '28px 32px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <Avatar id={user.id} name={user.name} size={84} />
             <div>
               <h1 style={{ fontSize: '1.65rem', fontWeight: 800, color: 'var(--color-text-main)', letterSpacing: '-0.02em' }}>
@@ -95,7 +95,7 @@ export const StudentProfile = () => {
             </span>
           </div>
 
-          <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '20px' }}>
+          <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '12px' }}>
             <Card>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -161,7 +161,7 @@ export const StudentProfile = () => {
       )}
 
       {/* Project and mentor */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '12px' }}>
         {project && (
           <Card>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
