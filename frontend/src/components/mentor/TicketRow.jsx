@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
 import { Badge } from '../ui/Card';
-import { categoryLabel, relativeDay } from '../../services/format';
+import { categoryLabel, relativeDay, waitingFor } from '../../services/format';
 
 // One escalated question in a list. Clicking opens the ticket.
 export const TicketRow = ({ ticket, compact = false }) => {
@@ -13,7 +13,7 @@ export const TicketRow = ({ ticket, compact = false }) => {
     <button
       className="hover-row"
       onClick={() => navigate(`/mentor/escalations/${ticket.id}`)}
-      style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', width: '100%', textAlign: 'left', padding: compact ? '10px 8px' : '14px 16px', borderRadius: 'var(--radius-md)' }}
+      style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', width: '100%', textAlign: 'left', padding: compact ? '10px 12px' : '14px 16px', borderRadius: 'var(--radius-md)' }}
     >
       <Avatar id={ticket.student_id} name={ticket.student_name || ticket.student_id} size={compact ? 32 : 38} />
       <div style={{ minWidth: 0, flex: 1 }}>
@@ -21,7 +21,9 @@ export const TicketRow = ({ ticket, compact = false }) => {
           <span style={{ fontSize: '0.86rem', fontWeight: 700 }}>{ticket.student_name || ticket.student_id}</span>
           {isFyi && <Badge variant="blue">FYI</Badge>}
           {ticket.status === 'resolved' && <Badge variant="green">Resolved</Badge>}
-          <span style={{ fontSize: '0.72rem', color: 'var(--color-text-subtle)' }}>{relativeDay(ticket.created_at)}</span>
+          <span style={{ fontSize: '0.72rem', color: 'var(--color-text-subtle)' }}>
+            {ticket.status === 'open' && !isFyi ? `waiting ${waitingFor(ticket.created_at)}` : relativeDay(ticket.created_at)}
+          </span>
         </div>
         <div style={{ fontSize: '0.86rem', color: 'var(--color-text-main)', lineHeight: 1.45, marginTop: '2px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
           {ticket.question}

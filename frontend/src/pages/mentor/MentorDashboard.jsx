@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, LifeBuoy, GraduationCap, Timer, MessagesSquare, Inbox, CalendarClock } from 'lucide-react';
+import { ShieldCheck, LifeBuoy, GraduationCap, Timer, Inbox, CalendarClock, ChevronRight, Info } from 'lucide-react';
 import { PageHeader, StatTile, SectionCard, ProgressBar, TextLink, EmptyState, Loading } from '../../components/ui/Bits';
 import { Badge } from '../../components/ui/Card';
 import { Avatar } from '../../components/ui/Avatar';
 import { TicketRow } from '../../components/mentor/TicketRow';
 import { mentorDeskService } from '../../services/mentorDeskService';
 import { errorMessage } from '../../services/apiClient';
-import { formatDate } from '../../services/format';
+import { waitingFor } from '../../services/format';
 import { useAuth } from '../../context/AuthContext';
 
 const daysLeft = (iso) => (iso ? Math.ceil((new Date(`${iso}T00:00:00`) - new Date()) / 86400000) : null);
@@ -43,120 +43,143 @@ export default function MentorDashboard() {
     .sort((a, b) => b.weight - a.weight)
     .slice(0, 5);
 
+  const subtitle = waiting.length
+    ? `${waiting.length} student${waiting.length > 1 ? 's are' : ' is'} waiting for your answer. Each one has a draft ready.`
+    : 'Nobody is waiting on you. The AI mentor is handling the rest.';
+
   return (
     <>
-      <PageHeader
-        title={`Hello, ${user.name.split(' ')[0]}`}
-        subtitle={waiting.length ? `${waiting.length} question${waiting.length > 1 ? 's are' : ' is'} waiting for you.` : 'Nothing is waiting for you right now.'}
-      />
+      <PageHeader title={`Hello, ${user.name.split(' ')[0]}`} subtitle={subtitle} />
 
-      <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '14px' }}>
-        <StatTile icon={ShieldCheck} label="Handled without a mentor" value={deflection} hint={`${metrics.questions} questions asked`} />
-        <StatTile icon={LifeBuoy} tone="accent" label="Waiting for you" value={waiting.length} hint={`${metrics.escalated} escalated so far`} />
-        <StatTile icon={GraduationCap} label="Reused mentor answers" value={metrics.answered_from_kb} hint="Answered from the knowledge base" />
-        <StatTile icon={MessagesSquare} label="Sent back to the client" value={metrics.redirected_to_client} hint="Client questions, not mentor ones" />
-        <StatTile icon={Timer} label="Minutes per ticket" value={metrics.mentor_minutes_per_ticket ?? '–'} hint={`${metrics.tickets_resolved} resolved`} />
+      <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '16px' }}>
+        <StatTile
+          icon={LifeBuoy}
+          tone={waiting.length ? 'accent' : 'primary'}
+          label="Waiting for you"
+          value={waiting.length}
+          hint={waiting.length ? `Oldest has waited ${waitingFor(waiting[waiting.length - 1].created_at)}` : 'All caught up'}
+          onClick={() => navigate('/mentor/escalations')}
+        />
+        <StatTile
+          icon={ShieldCheck}
+          label="Handled without you"
+          value={deflection}
+          hint={metrics.questions ? `${metrics.questions - metrics.escalated} of ${metrics.questions} questions` : 'No questions asked yet'}
+        />
+        <StatTile
+          icon={GraduationCap}
+          label="Your past answers reused"
+          value={metrics.answered_from_kb}
+          hint={`${metrics.redirected_to_client} more sent to the client`}
+        />
+        <StatTile
+          icon={Timer}
+          label="Your time per ticket"
+          value={metrics.mentor_minutes_per_ticket == null ? '–' : `${metrics.mentor_minutes_per_ticket} min`}
+          hint={metrics.tickets_resolved ? `${metrics.tickets_resolved} resolved so far` : 'Shows after your first answer'}
+        />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.5fr) minmax(0, 1fr)', gap: '18px', alignItems: 'start' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-          <SectionCard
-            title="Waiting for you"
-            hint="Each one comes with the chat, the project context and a draft answer"
-            action={<TextLink onClick={() => navigate('/mentor/escalations')}>See all</TextLink>}
-            style={{ padding: '20px 14px 10px' }}
-          >
-            {waiting.length === 0 ? (
-              <EmptyState icon={Inbox}>All caught up. New escalations appear here.</EmptyState>
-            ) : (
-              <div className="stagger" style={{ display: 'flex', flexDirection: 'column' }}>
-                {waiting.slice(0, 5).map((t) => <TicketRow key={t.id} ticket={t} compact />)}
-              </div>
-            )}
-          </SectionCard>
+      {/* Cards in the same row share one height, so the bottoms line up */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: '16px', alignItems: 'stretch' }}>
+        <SectionCard
+          flush
+          title="Waiting for you"
+          hint="Each one comes with the chat, the project context and a draft answer"
+          action={<TextLink onClick={() => navigate('/mentor/escalations')}>See all</TextLink>}
+        >
+          {waiting.length === 0 ? (
+            <EmptyState icon={Inbox}>All caught up. New escalations appear here as they come in.</EmptyState>
+          ) : (
+            <div className="stagger" style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              {waiting.slice(0, 5).map((t) => <TicketRow key={t.id} ticket={t} compact />)}
+            </div>
+          )}
+        </SectionCard>
 
-          <SectionCard title="Your projects" hint="Task progress comes live from ClickUp">
-            <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px' }}>
-              {projects.map((p) => {
-                const left = daysLeft(p.deadline);
-                return (
-                  <div key={p.id} style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'flex-start' }}>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: '0.92rem', fontWeight: 700 }}>{p.name}</div>
-                        <div style={{ fontSize: '0.76rem', color: 'var(--color-text-subtle)' }}>{p.client_name}</div>
-                      </div>
-                      <Badge variant="gray">{p.stage}</Badge>
-                    </div>
-                    <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.76rem', marginBottom: '5px' }}>
-                        <span style={{ color: 'var(--color-text-muted)' }}>{p.tasks.done} of {p.tasks.total} tasks done</span>
-                        <strong>{p.tasks.progress}%</strong>
-                      </div>
-                      <ProgressBar value={p.tasks.progress} />
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                      <div style={{ display: 'flex' }}>
-                        {p.students.map((s, i) => (
-                          <button key={s.id} title={s.name} onClick={() => navigate(`/mentor/students/${s.id}`)} style={{ marginLeft: i ? '-8px' : 0, borderRadius: '50%' }}>
-                            <Avatar id={s.id} name={s.name} size={28} />
-                          </button>
-                        ))}
-                      </div>
-                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                        {p.tasks.overdue > 0 && <Badge variant="orange">{p.tasks.overdue} overdue</Badge>}
-                        {p.open_tickets > 0 && <Badge variant="orange">{p.open_tickets} open</Badge>}
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.74rem', color: left != null && left < 14 ? 'var(--color-accent-strong)' : 'var(--color-text-subtle)' }}>
-                      <CalendarClock size={13} /> Due {formatDate(p.deadline)}{left != null && (left >= 0 ? ` · ${left} days left` : ` · ${-left} days late`)}
+        <SectionCard
+          flush
+          title="Students who may need you"
+          hint="Open tickets, late tasks, repeated struggles"
+          action={<TextLink onClick={() => navigate('/mentor/students')}>All students</TextLink>}
+        >
+          {attention.length === 0 ? (
+            <EmptyState icon={ShieldCheck}>Nobody stands out right now.</EmptyState>
+          ) : (
+            <div className="stagger" style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              {attention.map((s) => (
+                <button key={s.id} className="hover-row" onClick={() => navigate(`/mentor/students/${s.id}`)} style={{ display: 'flex', gap: '12px', alignItems: 'center', padding: '8px 12px', borderRadius: 'var(--radius-md)', textAlign: 'left' }}>
+                  <Avatar id={s.id} name={s.name} size={36} />
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 600 }}>{s.name}</div>
+                    <div style={{ fontSize: '0.76rem', color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {[
+                        s.open_tickets && `${s.open_tickets} open ticket${s.open_tickets > 1 ? 's' : ''}`,
+                        s.tasks.overdue && `${s.tasks.overdue} late task${s.tasks.overdue > 1 ? 's' : ''}`,
+                        s.struggles[0] && `keeps asking about ${s.struggles[0].topic}`
+                      ].filter(Boolean).join(' · ')}
                     </div>
                   </div>
-                );
-              })}
+                  <ChevronRight size={15} color="var(--color-text-subtle)" style={{ flexShrink: 0 }} />
+                </button>
+              ))}
             </div>
-          </SectionCard>
-        </div>
+          )}
+        </SectionCard>
+      </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-          <SectionCard
-            title="Students who may need you"
-            hint="Open tickets, overdue tasks and repeated struggles"
-            action={<TextLink onClick={() => navigate('/mentor/students')}>All students</TextLink>}
-          >
-            {attention.length === 0 ? (
-              <EmptyState icon={ShieldCheck}>Nobody stands out right now.</EmptyState>
-            ) : (
-              <div className="stagger" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                {attention.map((s) => (
-                  <button key={s.id} className="hover-row" onClick={() => navigate(`/mentor/students/${s.id}`)} style={{ display: 'flex', gap: '12px', alignItems: 'center', padding: '8px', borderRadius: 'var(--radius-md)', textAlign: 'left' }}>
-                    <Avatar id={s.id} name={s.name} size={36} />
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ fontSize: '0.86rem', fontWeight: 700 }}>{s.name}</div>
-                      <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {[
-                          s.open_tickets && `${s.open_tickets} open ticket${s.open_tickets > 1 ? 's' : ''}`,
-                          s.tasks.overdue && `${s.tasks.overdue} overdue`,
-                          s.struggles[0] && `struggles with ${s.struggles[0].topic}`
-                        ].filter(Boolean).join(' · ')}
-                      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: '16px', alignItems: 'stretch' }}>
+        <SectionCard title="Your projects" hint="Task progress comes live from ClickUp">
+          <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px' }}>
+            {projects.map((p) => {
+              const left = daysLeft(p.deadline);
+              return (
+                <div key={p.id} style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'flex-start' }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: '0.92rem', fontWeight: 700 }}>{p.name}</div>
+                      <div style={{ fontSize: '0.76rem', color: 'var(--color-text-subtle)' }}>{p.client_name}</div>
                     </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </SectionCard>
+                    <div style={{ display: 'flex' }}>
+                      {p.students.map((st, i) => (
+                        <button key={st.id} title={st.name} onClick={() => navigate(`/mentor/students/${st.id}`)} style={{ marginLeft: i ? '-8px' : 0, borderRadius: '50%' }}>
+                          <Avatar id={st.id} name={st.name} size={28} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.76rem', marginBottom: '6px' }}>
+                      <span style={{ color: 'var(--color-text-muted)' }}>{p.tasks.done} of {p.tasks.total} tasks done</span>
+                      <strong>{p.tasks.progress}%</strong>
+                    </div>
+                    <ProgressBar value={p.tasks.progress} />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginTop: 'auto' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: left != null && left < 14 ? 'var(--color-accent-strong)' : 'var(--color-text-subtle)' }}>
+                      <CalendarClock size={13} /> {left == null ? 'No deadline' : left >= 0 ? `${left} days left` : `${-left} days late`}
+                    </span>
+                    <span style={{ display: 'flex', gap: '6px' }}>
+                      {p.tasks.overdue > 0 && <Badge variant="orange">{p.tasks.overdue} late</Badge>}
+                      {p.open_tickets > 0 && <Badge variant="orange">{p.open_tickets} waiting</Badge>}
+                      {p.tasks.overdue === 0 && p.open_tickets === 0 && <Badge variant="green">On track</Badge>}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </SectionCard>
 
-          <SectionCard title="For your information" hint="Sensitive topics the AI already answered. No reply needed.">
-            {fyis.length === 0 ? (
-              <EmptyState>No notes.</EmptyState>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', margin: '0 -8px' }}>
-                {fyis.slice(0, 4).map((t) => <TicketRow key={t.id} ticket={t} compact />)}
-              </div>
-            )}
-          </SectionCard>
-        </div>
+        <SectionCard flush title="Good to know" hint="Sensitive topics the AI already answered. No reply needed.">
+          {fyis.length === 0 ? (
+            <EmptyState icon={Info}>Nothing to flag.</EmptyState>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              {fyis.slice(0, 4).map((t) => <TicketRow key={t.id} ticket={t} compact />)}
+            </div>
+          )}
+        </SectionCard>
       </div>
     </>
   );

@@ -136,11 +136,22 @@ async def sync_project_tasks(db: AsyncSession, project_id: str, force: bool = Fa
         log.warning("ClickUp sync failed for %s; using the stored tasks", project_id, exc_info=True)
         return None
 
-    existing = {
-        t.clickup_id: t
-        for t in (await db.execute(select(Task).where(Task.project_id == project_id))).scalars()
-        if t.clickup_id
-    }
+    rows = (await db.execute(select(Task).where(Task.project_id == project_id))).scalars().all()
+    existing = {t.clickup_id: t for t in rows if t.clickup_id}
+    # A reseed recreates the tasks without their ClickUp ids. Re-link those by name, otherwise
+    # every task would come back a second time as a new row.
+    unlinked = {t.name: t for t in rows if not t.clickup_id}
+    for r in remote:
+        orphan = unlinked.pop(r["name"], None)
+        if orphan is None:
+            continue
+        duplicate = existing.pop(r["id"], None)
+        if duplicate is not None:
+            await db.delete(duplicate)
+            await db.flush()
+        orphan.clickup_id = r["id"]
+        existing[r["id"]] = orphan
+
     seen: set[str] = set()
     for r in remote:
         seen.add(r["id"])

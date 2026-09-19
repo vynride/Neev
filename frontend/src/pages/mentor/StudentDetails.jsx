@@ -168,7 +168,7 @@ export default function StudentDetails() {
             </SectionCard>
           ))}
 
-          <SectionCard title="Tickets" hint="Everything from this student that reached a mentor" style={{ padding: '20px 14px 10px' }}>
+          <SectionCard flush title="Tickets" hint="Everything from this student that reached a mentor">
             {student.tickets.length === 0 ? <EmptyState icon={LifeBuoy}>Nothing has been escalated.</EmptyState> : (
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 {student.tickets.map((t) => <TicketRow key={t.id} ticket={{ ...t, student_name: student.name }} compact />)}
@@ -209,7 +209,7 @@ export default function StudentDetails() {
 
           <SectionCard title="Recent chats with the AI mentor" hint="Open one to read the full transcript">
             {student.sessions.length === 0 ? <EmptyState icon={MessageSquare}>No chats yet.</EmptyState> : (
-              <div style={{ display: 'flex', flexDirection: 'column', margin: '0 -8px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', margin: '0 -12px' }}>
                 {student.sessions.map((s) => (
                   <button key={s.id} className="hover-row" onClick={() => setOpenSession(s.id)} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', padding: '8px', borderRadius: 'var(--radius-md)', textAlign: 'left' }}>
                     <MessageSquare size={14} color="var(--color-text-subtle)" style={{ flexShrink: 0, marginTop: '4px' }} />

@@ -90,3 +90,23 @@ export const describeCitation = (c, project) => {
   }
   return { label: titleCase(c.type), title: ref, detail: '', quote: c.snippet };
 };
+
+// "Due in 3 days" is easier to act on than a date
+export const dueLabel = (iso, done = false) => {
+  if (!iso) return 'No due date';
+  if (done) return `Was due ${formatDate(iso)}`;
+  const days = Math.round((new Date(`${iso.slice(0, 10)}T00:00:00`) - new Date().setHours(0, 0, 0, 0)) / 86400000);
+  if (days === 0) return 'Due today';
+  if (days === 1) return 'Due tomorrow';
+  if (days > 1 && days <= 14) return `Due in ${days} days`;
+  if (days === -1) return '1 day late';
+  if (days < -1) return `${-days} days late`;
+  return `Due ${formatDate(iso)}`;
+};
+
+export const waitingFor = (iso) => {
+  const mins = Math.max(0, Math.round((Date.now() - new Date(iso)) / 60000));
+  if (mins < 60) return `${mins || 1} min`;
+  if (mins < 60 * 24) return `${Math.round(mins / 60)} h`;
+  return `${Math.round(mins / 1440)} d`;
+};
