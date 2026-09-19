@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
-import { Send, LifeBuoy, Plus, UserCheck } from 'lucide-react';
+import { useLocation, useSearchParams } from 'react-router-dom';
+import { ArrowUp, LifeBuoy } from 'lucide-react';
 import { EscalationModal } from '../components/escalation/EscalationModal';
 import { AiMessage } from '../components/chat/AiMessage';
+import { Thinking } from '../components/chat/Thinking';
 import { Markdown } from '../components/ui/Markdown';
-import { Button } from '../components/ui/Button';
+import { Avatar } from '../components/ui/Avatar';
+import { SESSIONS_CHANGED } from '../components/layout/StudentLayout';
 import { mentorService } from '../services/mentorService';
 import { projectService } from '../services/projectService';
 import { errorMessage } from '../services/apiClient';
@@ -12,6 +14,12 @@ import { formatTime } from '../services/format';
 import { useAuth } from '../context/AuthContext';
 
 const POLL_MS = 8000;
+
+const STARTERS = [
+  { title: 'My week', text: 'What is pending for me this week, and what is overdue?' },
+  { title: 'The codebase', text: 'Explain how the main parts of this codebase fit together, with a diagram.' },
+  { title: 'A tricky client', text: 'The client asked for something outside the agreed scope. How do I respond?' }
+];
 
 // A turn from the session log -> a chat message
 const fromTurn = (t) => ({
@@ -42,44 +50,48 @@ const fromReply = (r) => ({
 });
 
 export const MentorChat = () => {
-  const { user, project, projectId } = useAuth();
+  const { user, projectId } = useAuth();
   const location = useLocation();
-  const sessionKey = `saathi_session_${user.id}_${projectId}`;
-  const [sessionId, setSessionId] = useState(() => localStorage.getItem(sessionKey));
+  const [searchParams, setSearchParams] = useSearchParams();
+  // The open chat lives in the URL (?s=), so the sidebar, reload and back button all agree
+  const sessionId = searchParams.get('s');
+  const heldSession = useRef(null);
   const [messages, setMessages] = useState([]);
-  const [pastSessions, setPastSessions] = useState([]);
-  const [mentorName, setMentorName] = useState('');
+  const [project, setProject] = useState(null);
   const [inputText, setInputText] = useState(location.state?.prefill || '');
   const [isTyping, setIsTyping] = useState(false);
   const [feedbackBusyId, setFeedbackBusyId] = useState(null);
   const [error, setError] = useState('');
   const [escalationOpen, setEscalationOpen] = useState(false);
   const messagesEndRef = useRef(null);
+  const inputRef = useRef(null);
 
   const loadSession = useCallback(async (id) => {
     const session = await mentorService.getSession(id);
     setMessages(session.turns.map(fromTurn));
   }, []);
 
-  // Restore the current chat, list earlier ones, find the mentor's name
+  // Tasks, calls and the repo link give the sources readable names; the team gives the mentor's name
   useEffect(() => {
-    if (sessionId) {
-      loadSession(sessionId).catch(() => {
-        localStorage.removeItem(sessionKey);
-        setSessionId(null);
-      });
-    }
-    mentorService.listSessions(projectId).then(setPastSessions).catch(() => {});
-    projectService
-      .getProject(projectId)
-      .then((p) => setMentorName(p.team.find((m) => m.role === 'mentor')?.name || ''))
-      .catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    projectService.getProject(projectId).then(setProject).catch(() => {});
+  }, [projectId]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isTyping]);
+    if (sessionId === heldSession.current) return;
+    heldSession.current = sessionId;
+    setError('');
+    if (!sessionId) {
+      setMessages([]);
+      inputRef.current?.focus();
+      return;
+    }
+    setMessages([]);
+    loadSession(sessionId).catch((err) => setError(errorMessage(err)));
+  }, [sessionId, loadSession]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [messages, isTyping, feedbackBusyId]);
 
   // While a ticket is waiting on the mentor, check the session for their reply
   const answeredTickets = new Set(messages.filter((m) => m.sender === 'mentor').map((m) => m.ticket_id));
@@ -93,7 +105,7 @@ export const MentorChat = () => {
   }, [waitingOnMentor, sessionId, isTyping, feedbackBusyId, loadSession]);
 
   const handleSendMessage = async (textToSend) => {
-    const query = (textToSend || inputText).trim();
+    const query = (typeof textToSend === 'string' ? textToSend : inputText).trim();
     if (!query || isTyping) return;
 
     setMessages((prev) => [...prev, { id: `local_${Date.now()}`, sender: 'student', timestamp: formatTime(), content: query }]);
@@ -104,8 +116,9 @@ export const MentorChat = () => {
     try {
       const reply = await mentorService.ask(projectId, query, sessionId);
       if (reply.session_id !== sessionId) {
-        localStorage.setItem(sessionKey, reply.session_id);
-        setSessionId(reply.session_id);
+        heldSession.current = reply.session_id;
+        setSearchParams({ s: reply.session_id }, { replace: true });
+        window.dispatchEvent(new Event(SESSIONS_CHANGED));
       }
       setMessages((prev) => [...prev, fromReply(reply)]);
     } catch (err) {
@@ -132,26 +145,6 @@ export const MentorChat = () => {
     }
   };
 
-  const handleNewChat = () => {
-    localStorage.removeItem(sessionKey);
-    setSessionId(null);
-    setMessages([]);
-    setError('');
-    mentorService.listSessions(projectId).then(setPastSessions).catch(() => {});
-  };
-
-  const handleOpenSession = async (id) => {
-    if (!id) return;
-    localStorage.setItem(sessionKey, id);
-    setSessionId(id);
-    setError('');
-    try {
-      await loadSession(id);
-    } catch (err) {
-      setError(errorMessage(err));
-    }
-  };
-
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -159,174 +152,161 @@ export const MentorChat = () => {
     }
   };
 
-  const starters = [
-    'What is pending for me this week, and what is overdue?',
-    'Explain how the main parts of this codebase fit together, with a diagram.',
-    'The client asked for something outside the agreed scope. How do I respond?'
-  ];
+  const mentorName = project?.team.find((m) => m.role === 'mentor')?.name || '';
+  const busy = isTyping || !!feedbackBusyId;
+  const isEmpty = messages.length === 0 && !busy && !sessionId;
+  const canSend = inputText.trim() && !busy;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', flex: 1, minHeight: 0, gap: '14px' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, flexWrap: 'wrap', gap: '10px' }}>
-        <div>
-          <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-text-main)', letterSpacing: '-0.02em', margin: 0 }}>
-            Project Mentor
-          </h1>
-          <p style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', margin: 0 }}>
-            Knows {project?.name}: the code, documents, client calls and ClickUp tasks
-          </p>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          {pastSessions.length > 0 && (
-            <select
-              value={sessionId || ''}
-              onChange={(e) => handleOpenSession(e.target.value)}
-              style={{ padding: '7px 10px', borderRadius: 'var(--radius-md)', border: '1.5px solid var(--color-border)', fontSize: '0.8rem', maxWidth: '240px', background: '#FFFFFF' }}
-            >
-              <option value="">Earlier chats</option>
-              {pastSessions.map((s) => (
-                <option key={s.id} value={s.id}>{s.first_message.slice(0, 50) || 'Chat'}</option>
-              ))}
-            </select>
-          )}
-          <Button variant="outline" size="sm" icon={Plus} onClick={handleNewChat} disabled={isTyping}>
-            New chat
-          </Button>
-          <Button variant="terracotta" size="sm" icon={LifeBuoy} onClick={() => setEscalationOpen(true)} disabled={isTyping}>
-            Ask my mentor
-          </Button>
-        </div>
-      </div>
-
-      {/* Conversation */}
-      <div
-        style={{
-          background: 'var(--bg-surface)',
-          border: '1px solid var(--color-border)',
-          borderRadius: 'var(--radius-lg)',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          boxShadow: 'var(--shadow-card)',
-          flex: 1,
-          minHeight: 0
-        }}
-      >
-        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {messages.length === 0 && !isTyping ? (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', textAlign: 'center', padding: '20px' }}>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-text-main)', marginBottom: '6px' }}>
-                How can I help you today?
-              </h3>
-              <p style={{ fontSize: '0.88rem', maxWidth: '460px', lineHeight: 1.5, marginBottom: '18px' }}>
-                Ask about your project, the code, your tasks or how to handle your client.
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', maxWidth: '520px' }}>
-                {starters.map((s) => (
+    // Negative margin cancels the page padding: the conversation runs edge to edge
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, margin: '-24px -28px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+        <div style={{ padding: '28px clamp(28px, 5vw, 88px) 12px', display: 'flex', flexDirection: 'column', gap: '26px', minHeight: '100%' }}>
+          {isEmpty && (
+            <div className="fade-enter" style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '22px', paddingBottom: '6vh' }}>
+              <div>
+                <h2 style={{ fontSize: '1.7rem', fontWeight: 700, letterSpacing: '-0.03em' }}>
+                  Hello {user.name.split(' ')[0]}, what are you working on?
+                </h2>
+                <p style={{ fontSize: '0.95rem', color: 'var(--color-text-muted)', marginTop: '6px', maxWidth: '560px' }}>
+                  I know {project?.name || 'your project'}: the code, the documents, your client calls and your tasks.
+                </p>
+              </div>
+              <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '12px' }}>
+                {STARTERS.map((s) => (
                   <button
-                    key={s}
-                    onClick={() => handleSendMessage(s)}
-                    style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: '#F8FAFC', fontSize: '0.85rem', textAlign: 'left', color: 'var(--color-text-main)' }}
+                    key={s.title}
+                    onClick={() => handleSendMessage(s.text)}
+                    className="card is-clickable"
+                    style={{ padding: '14px 16px', textAlign: 'left' }}
                   >
-                    {s}
+                    <div style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--color-primary)', marginBottom: '4px' }}>
+                      {s.title}
+                    </div>
+                    <div style={{ fontSize: '0.86rem', color: 'var(--color-text-main)', lineHeight: 1.45 }}>{s.text}</div>
                   </button>
                 ))}
               </div>
             </div>
-          ) : (
-            messages.map((msg, idx) => {
-              const isStudent = msg.sender === 'student';
-              const isMentor = msg.sender === 'mentor';
-              const name = isStudent ? user.name : isMentor ? `${msg.mentor_name || 'Your mentor'} (mentor)` : 'AI Mentor';
+          )}
 
+          {messages.map((msg, idx) => {
+            if (msg.sender === 'student') {
               return (
-                <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isStudent ? 'flex-end' : 'flex-start' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                    {isMentor && <UserCheck size={13} color="#C2410C" />}
-                    <span style={{ fontWeight: isMentor ? 700 : 400, color: isMentor ? '#C2410C' : undefined }}>{name}</span>
-                    <span>·</span>
-                    <span>{msg.timestamp}</span>
-                  </div>
-
+                <div key={msg.id} className="msg-enter" style={{ display: 'flex', justifyContent: 'flex-end' }}>
                   <div
-                    style={{
-                      maxWidth: isStudent ? '80%' : '94%',
-                      background: isStudent ? '#F0FDF4' : isMentor ? '#FFF7ED' : '#FFFFFF',
-                      border: `1.5px solid ${isStudent ? '#BBF7D0' : isMentor ? '#FED7AA' : 'var(--color-border)'}`,
-                      borderRadius: isStudent ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                      padding: '16px 20px',
-                      boxShadow: 'var(--shadow-sm)'
-                    }}
+                    title={msg.timestamp}
+                    style={{ maxWidth: '78%', background: 'var(--color-primary)', color: '#FFFFFF', borderRadius: '18px 18px 4px 18px', padding: '10px 16px', fontSize: '0.93rem', lineHeight: 1.55, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}
                   >
-                    {isStudent && (
-                      <p style={{ fontSize: '0.92rem', lineHeight: 1.5, fontWeight: 500, whiteSpace: 'pre-wrap' }}>{msg.content}</p>
-                    )}
-                    {isMentor && <Markdown>{msg.content}</Markdown>}
-                    {!isStudent && !isMentor && (
-                      <AiMessage
-                        msg={msg}
-                        isLatest={idx === messages.length - 1}
-                        onFeedback={handleFeedback}
-                        feedbackBusy={feedbackBusyId === msg.id}
-                      />
-                    )}
+                    {msg.content}
                   </div>
                 </div>
               );
-            })
-          )}
+            }
 
-          {(isTyping || feedbackBusyId) && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
-              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-primary)', animation: 'ping 1s infinite' }} />
-              <span>Reading your project and writing a reply. This takes 10 to 25 seconds.</span>
+            const isMentor = msg.sender === 'mentor';
+            return (
+              <div key={msg.id} className="msg-enter" style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
+                {isMentor ? (
+                  <Avatar name={msg.mentor_name || 'Mentor'} size={30} tone="orange" />
+                ) : (
+                  <img src="/logo.svg" alt="" style={{ width: '30px', height: '30px', flexShrink: 0 }} />
+                )}
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '0.84rem', fontWeight: 700, color: isMentor ? 'var(--color-accent-strong)' : 'var(--color-text-main)' }}>
+                      {isMentor ? msg.mentor_name || 'Your mentor' : 'AI Mentor'}
+                    </span>
+                    {isMentor && <span style={{ fontSize: '0.72rem', color: 'var(--color-accent-strong)' }}>your mentor</span>}
+                    <span style={{ fontSize: '0.72rem', color: 'var(--color-text-subtle)' }}>{msg.timestamp}</span>
+                  </div>
+                  {isMentor ? (
+                    <div style={{ background: 'var(--color-accent-subtle)', border: '1px solid var(--color-accent-border)', borderRadius: '4px 16px 16px 16px', padding: '14px 18px' }}>
+                      <Markdown>{msg.content}</Markdown>
+                    </div>
+                  ) : (
+                    <AiMessage
+                      msg={msg}
+                      project={project}
+                      isLatest={idx === messages.length - 1}
+                      onFeedback={handleFeedback}
+                      feedbackBusy={feedbackBusyId === msg.id}
+                    />
+                  )}
+                </div>
+              </div>
+            );
+          })}
+
+          {busy && (
+            <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+              <img src="/logo.svg" alt="" style={{ width: '30px', height: '30px', flexShrink: 0 }} />
+              <Thinking />
             </div>
           )}
           {error && <div className="notice-error">{error}</div>}
           <div ref={messagesEndRef} />
         </div>
+      </div>
 
-        {/* Input */}
-        <div style={{ padding: '14px 20px', borderTop: '1px solid var(--color-border)', background: '#FAFBF8', flexShrink: 0 }}>
+      {/* Composer */}
+      <div style={{ flexShrink: 0, padding: '8px clamp(28px, 5vw, 88px) 18px' }}>
+        <div>
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '12px',
-              background: '#FFFFFF',
-              borderRadius: 'var(--radius-full)',
-              border: '1.5px solid var(--color-border)',
-              padding: '6px 14px',
-              boxShadow: 'var(--shadow-sm)'
+              gap: '8px',
+              background: 'var(--bg-surface)',
+              borderRadius: '18px',
+              border: '1px solid var(--color-border-strong)',
+              padding: '8px 8px 8px 18px',
+              boxShadow: 'var(--shadow-md)'
             }}
           >
             <input
+              ref={inputRef}
               type="text"
-              placeholder="Ask your question... (e.g. How does authentication work in our code?)"
+              placeholder="Ask about your code, tasks or client…"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyDown={handleKeyDown}
               autoFocus
-              style={{ flex: 1, border: 'none', outline: 'none', fontSize: '0.9rem', padding: '6px 4px' }}
+              style={{ flex: 1, border: 'none', outline: 'none', fontSize: '0.94rem', padding: '8px 0', background: 'transparent' }}
             />
             <button
               type="button"
+              className="hover-row"
+              onClick={() => setEscalationOpen(true)}
+              disabled={busy}
+              title="Send a question straight to your mentor"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 12px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}
+            >
+              <LifeBuoy size={15} /> Ask my mentor
+            </button>
+            <button
+              type="button"
               onClick={() => handleSendMessage()}
-              disabled={!inputText.trim() || isTyping}
+              disabled={!canSend}
+              aria-label="Send"
               style={{
-                background: inputText.trim() && !isTyping ? 'var(--color-primary)' : '#CBD5E1',
+                background: canSend ? 'var(--color-primary)' : 'var(--color-border)',
                 color: '#FFFFFF',
-                width: '34px',
-                height: '34px',
-                borderRadius: '50%',
+                width: '36px',
+                height: '36px',
+                borderRadius: '12px',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                opacity: 1,
+                transform: canSend ? 'none' : 'scale(0.94)'
               }}
             >
-              <Send size={15} />
+              <ArrowUp size={17} strokeWidth={2.4} />
             </button>
+          </div>
+          <div style={{ textAlign: 'center', fontSize: '0.7rem', color: 'var(--color-text-subtle)', marginTop: '8px' }}>
+            The AI mentor can be wrong. If an answer does not help, say so and it goes to {mentorName || 'your mentor'}.
           </div>
         </div>
       </div>

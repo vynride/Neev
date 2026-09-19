@@ -102,7 +102,8 @@ export const ProjectOverview = () => {
               fontSize: '0.88rem',
               fontWeight: activeTab === tab.id ? 700 : 500,
               color: activeTab === tab.id ? 'var(--color-primary)' : 'var(--color-text-muted)',
-              borderBottom: activeTab === tab.id ? '3px solid var(--color-primary)' : '3px solid transparent',
+              borderBottom: activeTab === tab.id ? '2px solid var(--color-primary)' : '2px solid transparent',
+              marginBottom: '-1px',
               background: 'transparent',
               transition: 'all 0.15s ease'
             }}
@@ -114,7 +115,7 @@ export const ProjectOverview = () => {
 
       {/* Tab Contents */}
       {activeTab === 'overview' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.6fr) minmax(0, 1.1fr)', gap: '28px' }}>
+        <div className="tab-enter" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.6fr) minmax(0, 1.1fr)', gap: '28px' }}>
           {/* Left Column: Project Summary & Technologies */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             {/* Project Summary Card */}
@@ -170,7 +171,7 @@ export const ProjectOverview = () => {
                 {/* SVG Radial Donut Chart */}
                 <div style={{ position: 'relative', width: '130px', height: '130px' }}>
                   <svg width="130" height="130" viewBox="0 0 100 100">
-                    <circle cx="50" cy="50" r="40" stroke="#F1F5F9" strokeWidth="12" fill="none" />
+                    <circle cx="50" cy="50" r="40" stroke="var(--bg-subtle)" strokeWidth="12" fill="none" />
                     <circle
                       cx="50"
                       cy="50"
@@ -208,12 +209,12 @@ export const ProjectOverview = () => {
                     <strong style={{ marginLeft: 'auto' }}>{project.metrics.completed}</strong>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}>
-                    <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#F59E0B' }} />
+                    <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--color-accent)' }} />
                     <span style={{ color: 'var(--color-text-muted)' }}>In Progress</span>
                     <strong style={{ marginLeft: 'auto' }}>{project.metrics.inProgress + project.metrics.inReview}</strong>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}>
-                    <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#CBD5E1' }} />
+                    <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--color-border-strong)' }} />
                     <span style={{ color: 'var(--color-text-muted)' }}>To Do</span>
                     <strong style={{ marginLeft: 'auto' }}>{project.metrics.pending}</strong>
                   </div>
@@ -242,7 +243,7 @@ export const ProjectOverview = () => {
                       justifyContent: 'space-between',
                       padding: '8px 12px',
                       borderRadius: 'var(--radius-md)',
-                      background: '#FAFBF8'
+                      background: 'var(--bg-subtle)'
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -264,7 +265,7 @@ export const ProjectOverview = () => {
 
       {/* Tasks Tab View: live from ClickUp */}
       {activeTab === 'tasks' && (
-        <Card>
+        <Card className="tab-enter">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
             <div>
               <h3 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Project Tasks</h3>
@@ -297,7 +298,7 @@ export const ProjectOverview = () => {
                   padding: '16px 20px',
                   borderRadius: 'var(--radius-md)',
                   border: '1px solid var(--color-border)',
-                  background: task.status === 'done' ? '#F0FDF4' : '#FFFFFF'
+                  background: task.status === 'done' ? 'var(--bg-accent-soft)' : '#FFFFFF'
                 }}
               >
                 <div>
@@ -306,7 +307,7 @@ export const ProjectOverview = () => {
                   </div>
                   <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
                     Assignee: <strong>{task.assignee_name || 'Unassigned'}</strong> · Due {formatDate(task.due_date)}
-                    {isOverdue(task) && <strong style={{ color: '#B91C1C' }}> · Overdue</strong>}
+                    {isOverdue(task) && <strong style={{ color: 'var(--color-danger)' }}> · Overdue</strong>}
                   </div>
                 </div>
                 <Badge variant={task.status === 'done' ? 'green' : task.status === 'to do' ? 'gray' : 'orange'}>
@@ -320,7 +321,7 @@ export const ProjectOverview = () => {
 
       {/* Client Calls Tab View: past calls the AI mentor can search */}
       {activeTab === 'calls' && (
-        <Card>
+        <Card className="tab-enter">
           <h3 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Client Calls</h3>
           <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: '2px 0 16px' }}>
             Transcripts of these calls are part of the AI mentor's project context.
@@ -352,10 +353,10 @@ export const ProjectOverview = () => {
 
       {/* Technical Context Tab View */}
       {activeTab === 'technical' && (
-        <Card>
+        <Card className="tab-enter">
           <h3 style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: '16px' }}>Technical Context</h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-            <div style={{ padding: '16px', background: '#F8FAFC', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+            <div style={{ padding: '16px', background: 'var(--bg-subtle)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
               <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>Repository</div>
               <a
                 href={project.repo_url}
@@ -366,7 +367,7 @@ export const ProjectOverview = () => {
                 {project.repo_url || 'No repository linked'}
               </a>
             </div>
-            <div style={{ padding: '16px', background: '#F8FAFC', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+            <div style={{ padding: '16px', background: 'var(--bg-subtle)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
               <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>Code last read by the AI mentor</div>
               <div style={{ fontSize: '0.9rem', fontWeight: 600, marginTop: '4px' }}>
                 {project.repo_synced_at ? new Date(project.repo_synced_at).toLocaleString('en-IN') : 'Not synced yet'}

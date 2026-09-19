@@ -39,7 +39,7 @@ export const KnowledgeAndRequirements = () => {
             width: '42px',
             height: '42px',
             borderRadius: '12px',
-            background: '#DCFCE7',
+            background: 'var(--color-primary-subtle)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -87,7 +87,7 @@ export const KnowledgeAndRequirements = () => {
             border: '1px solid var(--color-border-subtle)'
           }}
         >
-          <Search size={16} color="#94A3B8" />
+          <Search size={16} color="var(--color-text-subtle)" />
           <input
             type="text"
             placeholder="Search questions and answers..."
@@ -100,7 +100,7 @@ export const KnowledgeAndRequirements = () => {
         <select
           value={category}
           onChange={(e) => setCategory(e.target.value)}
-          style={{ padding: '8px 12px', borderRadius: 'var(--radius-md)', border: '1.5px solid var(--color-border)', fontSize: '0.85rem', background: '#FFFFFF' }}
+          style={{ padding: '8px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', fontSize: '0.85rem', background: '#FFFFFF' }}
         >
           <option value="all">All categories</option>
           {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
@@ -115,21 +115,22 @@ export const KnowledgeAndRequirements = () => {
         <div style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>No answers match.</div>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div className="stagger" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {filtered.map((entry) => {
           const isOpen = openId === entry.id;
           return (
             <Card
               key={entry.id}
+              className="is-clickable"
               style={{ padding: '18px 22px', cursor: 'pointer' }}
               onClick={() => setOpenId(isOpen ? null : entry.id)}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-primary)', background: '#F0FDF4', padding: '2px 8px', borderRadius: '4px' }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-primary)', background: 'var(--bg-accent-soft)', padding: '2px 8px', borderRadius: '4px' }}>
                   {categoryLabel(entry.category)}
                 </span>
                 {entry.from_ticket && (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.72rem', fontWeight: 700, color: '#C2410C', background: '#FFEDD5', padding: '2px 8px', borderRadius: '4px' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-accent-strong)', background: 'var(--color-accent-subtle)', padding: '2px 8px', borderRadius: '4px' }}>
                     <UserCheck size={12} /> From a student's ticket
                   </span>
                 )}
@@ -140,7 +141,7 @@ export const KnowledgeAndRequirements = () => {
               </h3>
 
               {isOpen ? (
-                <div style={{ marginTop: '12px' }} onClick={(e) => e.stopPropagation()}>
+                <div className="tab-enter" style={{ marginTop: '12px' }} onClick={(e) => e.stopPropagation()}>
                   <Markdown>{entry.answer}</Markdown>
                   <Button
                     variant="outline"

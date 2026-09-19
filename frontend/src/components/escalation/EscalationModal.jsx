@@ -28,7 +28,7 @@ export const EscalationModal = ({ isOpen, onClose, onSubmit, mentorName }) => {
     width: '100%',
     padding: '10px 12px',
     borderRadius: 'var(--radius-md)',
-    border: '1.5px solid var(--color-border)',
+    border: '1px solid var(--color-border)',
     outline: 'none',
     fontSize: '0.875rem',
     resize: 'vertical'
@@ -36,10 +36,11 @@ export const EscalationModal = ({ isOpen, onClose, onSubmit, mentorName }) => {
 
   return (
     <div
+      className="fade-enter"
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: 'rgba(15, 23, 42, 0.55)',
+        backgroundColor: 'rgba(27, 31, 29, 0.5)',
         backdropFilter: 'blur(3px)',
         display: 'flex',
         alignItems: 'center',
@@ -50,6 +51,7 @@ export const EscalationModal = ({ isOpen, onClose, onSubmit, mentorName }) => {
       onClick={handleClose}
     >
       <div
+        className="modal-enter"
         style={{
           background: '#FFFFFF',
           borderRadius: 'var(--radius-lg)',
@@ -68,7 +70,7 @@ export const EscalationModal = ({ isOpen, onClose, onSubmit, mentorName }) => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            background: '#FAFBF8'
+            background: 'var(--bg-subtle)'
           }}
         >
           <div>
@@ -79,7 +81,7 @@ export const EscalationModal = ({ isOpen, onClose, onSubmit, mentorName }) => {
               Your mentor gets this chat and your project context, so you will not need to explain it again
             </p>
           </div>
-          <button onClick={handleClose} style={{ padding: '6px', color: '#64748B' }}>
+          <button onClick={handleClose} style={{ padding: '6px', color: 'var(--color-text-muted)' }}>
             <X size={20} />
           </button>
         </div>

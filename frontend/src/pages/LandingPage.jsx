@@ -136,10 +136,10 @@ export const LandingPage = () => {
                 position: 'absolute',
                 top: '-20px',
                 right: '10px',
-                background: '#F0FDF4',
+                background: 'var(--bg-accent-soft)',
                 padding: '12px 18px',
                 borderRadius: 'var(--radius-lg)',
-                border: '1px solid #DCFCE7',
+                border: '1px solid var(--color-primary-subtle)',
                 boxShadow: 'var(--shadow-sm)',
                 zIndex: 10
               }}
@@ -184,7 +184,7 @@ export const LandingPage = () => {
                   gap: '12px'
                 }}
               >
-                <div style={{ background: '#DCFCE7', padding: '10px', borderRadius: '50%', color: '#166534' }}>
+                <div style={{ background: 'var(--color-primary-subtle)', padding: '10px', borderRadius: '50%', color: 'var(--color-primary)' }}>
                   <Award size={20} />
                 </div>
                 <div>
@@ -217,7 +217,7 @@ export const LandingPage = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <img src="/logo.svg" alt="Barabari" style={{ width: '24px', height: '24px' }} />
           <span style={{ fontWeight: 800, color: 'var(--color-primary)', fontSize: '0.9rem' }}>Barabari</span>
-          <span style={{ color: '#94A3B8' }}>|</span>
+          <span style={{ color: 'var(--color-text-subtle)' }}>|</span>
           <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Project Saathi</span>
         </div>
 

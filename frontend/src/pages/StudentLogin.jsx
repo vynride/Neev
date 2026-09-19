@@ -103,8 +103,8 @@ export const StudentLogin = () => {
                         gap: '12px',
                         padding: '10px 14px',
                         borderRadius: 'var(--radius-md)',
-                        border: '1.5px solid var(--color-border)',
-                        background: signingIn === u.id ? '#F0FDF4' : '#FFFFFF',
+                        border: '1px solid var(--color-border)',
+                        background: signingIn === u.id ? 'var(--bg-accent-soft)' : '#FFFFFF',
                         textAlign: 'left',
                         opacity: signingIn && signingIn !== u.id ? 0.5 : 1
                       }}
@@ -116,7 +116,7 @@ export const StudentLogin = () => {
                       </div>
                       {signingIn === u.id
                         ? <Loader2 size={16} className="animate-spin" color="var(--color-primary)" />
-                        : <ArrowRight size={16} color="#94A3B8" />}
+                        : <ArrowRight size={16} color="var(--color-text-subtle)" />}
                     </button>
                   ))}
                 </div>
@@ -131,7 +131,7 @@ export const StudentLogin = () => {
         style={{
           flex: '1 1 540px',
           position: 'relative',
-          background: 'linear-gradient(135deg, #1E5E3A 0%, #164E2E 100%)',
+          background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',

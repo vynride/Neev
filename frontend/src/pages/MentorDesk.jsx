@@ -1,10 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { LogOut, Inbox, CheckCircle2, Info, Send, RefreshCw } from 'lucide-react';
+import { Inbox, CheckCircle2, Info, Send, RefreshCw } from 'lucide-react';
 import { Card, Badge } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Markdown } from '../components/ui/Markdown';
-import { Avatar } from '../components/ui/Avatar';
+import { UserMenu } from '../components/layout/UserMenu';
 import { mentorDeskService } from '../services/mentorDeskService';
 import { errorMessage } from '../services/apiClient';
 import { categoryLabel, formatDate, formatTime } from '../services/format';
@@ -30,8 +29,7 @@ const Section = ({ title, children }) => (
 );
 
 export const MentorDesk = () => {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
   const [status, setStatus] = useState('open');
   const [tickets, setTickets] = useState([]);
   const [metrics, setMetrics] = useState(null);
@@ -101,21 +99,15 @@ export const MentorDesk = () => {
             <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>Only what the AI mentor could not resolve reaches you</div>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Avatar name={user.name} size={32} tone="orange" />
-          <span style={{ fontSize: '0.88rem', fontWeight: 700 }}>{user.name}</span>
-          <Button variant="outline" size="sm" icon={LogOut} onClick={() => { logout(); navigate('/login'); }}>
-            Sign Out
-          </Button>
-        </div>
+        <UserMenu showProfile={false} />
       </header>
 
-      <main style={{ padding: '24px 28px', maxWidth: '1440px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <main className="page-enter" style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
         {error && <div className="notice-error">{error}</div>}
 
         {/* Mentor load metrics */}
         {metrics && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '14px' }}>
+          <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '14px' }}>
             <Metric label="Handled without a mentor" value={deflection == null ? '–' : `${Math.round(deflection * 100)}%`} hint={`${metrics.questions} questions, ${metrics.escalated} escalated`} />
             <Metric label="Answered from past mentor answers" value={metrics.answered_from_kb} hint="Knowledge base reuse" />
             <Metric label="Redirected to the client" value={metrics.redirected_to_client} hint="Not a mentor question" />
@@ -162,13 +154,14 @@ export const MentorDesk = () => {
               {tickets.map((t) => (
                 <button
                   key={t.id}
+                  className="hover-row"
                   onClick={() => openTicket(t.id)}
                   style={{
                     textAlign: 'left',
                     padding: '12px 14px',
                     borderRadius: 'var(--radius-md)',
-                    border: `1.5px solid ${selectedId === t.id ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                    background: selectedId === t.id ? '#F0FDF4' : '#FFFFFF'
+                    border: `1px solid ${selectedId === t.id ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                    background: selectedId === t.id ? 'var(--bg-accent-soft)' : undefined
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', marginBottom: '4px' }}>
@@ -193,7 +186,7 @@ export const MentorDesk = () => {
             )}
             {selectedId && !ticket && !error && <div style={{ color: 'var(--color-text-muted)' }}>Loading ticket...</div>}
             {ticket && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div key={ticket.id} className="tab-enter" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
                     <Badge variant={isFyi ? 'blue' : 'orange'}>{isFyi ? 'FYI: no answer needed' : 'Needs your answer'}</Badge>
@@ -206,7 +199,7 @@ export const MentorDesk = () => {
                 </div>
 
                 {isFyi && (
-                  <div style={{ display: 'flex', gap: '10px', padding: '12px 14px', borderRadius: 'var(--radius-md)', background: '#EFF6FF', border: '1px solid #BFDBFE', fontSize: '0.84rem', color: '#1E3A8A' }}>
+                  <div style={{ display: 'flex', gap: '10px', padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'var(--color-info-subtle)', border: '1px solid var(--color-info-subtle)', fontSize: '0.84rem', color: 'var(--color-info)' }}>
                     <Info size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
                     <span>The AI mentor already answered the student. This is here because the topic is sensitive: {ticket.tried}</span>
                   </div>
@@ -214,7 +207,7 @@ export const MentorDesk = () => {
 
                 {!isFyi && (
                   <Section title="What was tried">
-                    <div style={{ fontSize: '0.86rem', whiteSpace: 'pre-wrap', color: 'var(--color-text-main)', maxHeight: '220px', overflowY: 'auto', padding: '12px 14px', background: '#F8FAFC', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                    <div style={{ fontSize: '0.86rem', whiteSpace: 'pre-wrap', color: 'var(--color-text-main)', maxHeight: '220px', overflowY: 'auto', padding: '12px 14px', background: 'var(--bg-subtle)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
                       {ticket.tried}
                     </div>
                   </Section>
@@ -227,7 +220,7 @@ export const MentorDesk = () => {
                       rows={isFyi ? 2 : 10}
                       value={answer}
                       onChange={(e) => setAnswer(e.target.value)}
-                      style={{ width: '100%', padding: '12px 14px', borderRadius: 'var(--radius-md)', border: '1.5px solid var(--color-border)', fontSize: '0.88rem', lineHeight: 1.55, resize: 'vertical', outline: 'none' }}
+                      style={{ width: '100%', padding: '12px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', fontSize: '0.88rem', lineHeight: 1.55, resize: 'vertical', outline: 'none' }}
                     />
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '10px', flexWrap: 'wrap' }}>
                       <Button variant="primary" icon={isFyi ? CheckCircle2 : Send} onClick={handleResolve} disabled={sending || (!isFyi && !answer.trim())}>
@@ -243,7 +236,7 @@ export const MentorDesk = () => {
                 ) : (
                   ticket.final_answer && (
                     <Section title="Answer sent">
-                      <div style={{ padding: '12px 14px', background: '#F0FDF4', borderRadius: 'var(--radius-md)', border: '1px solid #BBF7D0' }}>
+                      <div style={{ padding: '12px 14px', background: 'var(--bg-accent-soft)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-primary-border)' }}>
                         <Markdown>{ticket.final_answer}</Markdown>
                       </div>
                     </Section>
@@ -254,7 +247,7 @@ export const MentorDesk = () => {
                   <Section title="What the AI looked at">
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       {ticket.excerpts.map((ex, idx) => (
-                        <details key={idx} style={{ padding: '8px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: '#F8FAFC' }}>
+                        <details key={idx} style={{ padding: '8px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--bg-subtle)' }}>
                           <summary style={{ fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', overflowWrap: 'anywhere' }}>
                             {ex.ref || ex.source || ex.type || `Excerpt ${idx + 1}`}
                           </summary>
@@ -275,7 +268,7 @@ export const MentorDesk = () => {
                         style={{
                           padding: '10px 14px',
                           borderRadius: 'var(--radius-md)',
-                          background: turn.role === 'student' ? '#F0FDF4' : turn.role === 'mentor' ? '#FFF7ED' : '#FFFFFF',
+                          background: turn.role === 'student' ? 'var(--bg-accent-soft)' : turn.role === 'mentor' ? 'var(--color-accent-subtle)' : '#FFFFFF',
                           border: '1px solid var(--color-border)'
                         }}
                       >
@@ -293,10 +286,10 @@ export const MentorDesk = () => {
                     Project summary and what the AI knows about {ticket.student.name.split(' ')[0]}
                   </summary>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px', marginTop: '12px' }}>
-                    <div style={{ padding: '12px 14px', background: '#F8FAFC', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                    <div style={{ padding: '12px 14px', background: 'var(--bg-subtle)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
                       <Markdown>{ticket.project.card || 'No project summary yet.'}</Markdown>
                     </div>
-                    <div style={{ padding: '12px 14px', background: '#F8FAFC', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                    <div style={{ padding: '12px 14px', background: 'var(--bg-subtle)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
                       <Markdown>{ticket.student.memory || 'No notes on this student yet.'}</Markdown>
                     </div>
                   </div>

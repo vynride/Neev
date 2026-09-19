@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Award, Code2, MessageSquare, Briefcase, Mail, Sparkles, ShieldCheck, LogOut, Brain } from 'lucide-react';
+import { User, Award, Code2, MessageSquare, Briefcase, Mail, Sparkles, ShieldCheck, Brain } from 'lucide-react';
 import { Card, Badge } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Avatar } from '../components/ui/Avatar';
@@ -17,14 +17,14 @@ const ScoreBar = ({ label, value, color }) => (
       <span style={{ color: 'var(--color-text-muted)' }}>{label}</span>
       <strong>{value}</strong>
     </div>
-    <div style={{ width: '100%', height: '6px', background: '#E2E8F0', borderRadius: '999px', overflow: 'hidden' }}>
+    <div style={{ width: '100%', height: '6px', background: 'var(--color-border)', borderRadius: '999px', overflow: 'hidden' }}>
       <div style={{ width: `${value}%`, height: '100%', background: color }} />
     </div>
   </div>
 );
 
 export const StudentProfile = () => {
-  const { user, projectId, logout } = useAuth();
+  const { user, projectId } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [project, setProject] = useState(null);
@@ -50,9 +50,9 @@ export const StudentProfile = () => {
   const mentor = project?.team.find((m) => m.role === 'mentor');
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '28px', maxWidth: '1180px', margin: '0 auto', width: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '28px', width: '100%' }}>
       {/* Top Profile Header */}
-      <Card style={{ padding: '32px', background: 'linear-gradient(135deg, #FAFBF8 0%, #F0FDF4 100%)', border: '1.5px solid #DCFCE7' }}>
+      <Card style={{ padding: '28px 32px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
             <Avatar name={user.name} size={84} />
@@ -65,7 +65,7 @@ export const StudentProfile = () => {
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', marginTop: '10px', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <Mail size={14} color="#64748B" /> {user.email}
+                  <Mail size={14} color="var(--color-text-muted)" /> {user.email}
                 </span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                   <ShieldCheck size={14} color="var(--color-primary)" /> ID: <strong>{user.id}</strong>
@@ -77,17 +77,6 @@ export const StudentProfile = () => {
           <div style={{ display: 'flex', gap: '10px' }}>
             <Button onClick={() => navigate('/student/mentor')} variant="primary" size="sm" icon={Sparkles}>
               Ask AI Mentor
-            </Button>
-            <Button
-              onClick={() => {
-                logout();
-                navigate('/login');
-              }}
-              variant="outline"
-              size="sm"
-              icon={LogOut}
-            >
-              Sign Out
             </Button>
           </div>
         </div>
@@ -106,11 +95,11 @@ export const StudentProfile = () => {
             </span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '20px' }}>
-            <Card style={{ borderLeft: '4px solid var(--color-primary)' }}>
+          <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '20px' }}>
+            <Card>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{ background: '#DCFCE7', padding: '8px', borderRadius: '8px', color: '#166534' }}>
+                  <div style={{ background: 'var(--color-primary-subtle)', padding: '8px', borderRadius: '8px', color: 'var(--color-primary)' }}>
                     <Code2 size={20} />
                   </div>
                   <div>
@@ -137,10 +126,10 @@ export const StudentProfile = () => {
               </div>
             </Card>
 
-            <Card style={{ borderLeft: '4px solid var(--color-accent)' }}>
+            <Card>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{ background: '#FFEDD5', padding: '8px', borderRadius: '8px', color: '#C2410C' }}>
+                  <div style={{ background: 'var(--color-accent-subtle)', padding: '8px', borderRadius: '8px', color: 'var(--color-accent-strong)' }}>
                     <MessageSquare size={20} />
                   </div>
                   <div>
@@ -183,7 +172,7 @@ export const StudentProfile = () => {
               <Badge variant="green">{project.stage}</Badge>
             </div>
 
-            <div style={{ background: '#FAFBF8', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', marginBottom: '16px' }}>
+            <div style={{ background: 'var(--bg-subtle)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', marginBottom: '16px' }}>
               <div style={{ fontSize: '1.15rem', fontWeight: 800 }}>{project.name}</div>
               <div style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
                 Client: <strong>{project.client_name}</strong>
@@ -210,7 +199,7 @@ export const StudentProfile = () => {
               <User size={18} color="var(--color-primary)" />
               <h3 style={{ fontSize: '1.05rem', fontWeight: 800 }}>Your Barabari Mentor</h3>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', background: '#FAFBF8', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', background: 'var(--bg-subtle)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', marginBottom: '16px' }}>
               <Avatar name={mentor.name} size={52} tone="orange" />
               <div>
                 <div style={{ fontSize: '1rem', fontWeight: 800 }}>{mentor.name}</div>
