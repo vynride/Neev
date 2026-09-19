@@ -63,3 +63,13 @@ open tickets with AI drafts, resolved tickets with the mentor's answer (saved to
 base), one reused answer, one FYI, metrics and recurring struggles. It makes no model calls.
 Everything it writes has an id starting with `demo_`; `make demo ARGS=--force` replaces only that.
 After a `make seed`, run `make ingest` and then `make demo`.
+
+## Voice
+
+A student can ask by voice: the mic in the chat composer records, `POST /api/voice/ask` transcribes it
+with Sarvam (language detected from the audio), answers it as a normal chat turn in a short spoken
+style and in the language she used, and returns the answer with MP3 audio that plays by itself.
+Every AI and mentor message also has a Listen button (`POST /api/voice/speak`).
+
+Set `SARVAM_API_KEY` in `backend/.env`. Without it the mic and Listen buttons are hidden and the
+chat works as before. Microphone access needs `localhost` or HTTPS.

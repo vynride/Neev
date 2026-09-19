@@ -269,6 +269,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes pop { from { opacity: 0; transform: translateY(-4px) scale(0.98); } to { opacity: 1; transform: none; } }
 @keyframes modal { from { opacity: 0; transform: translateY(12px) scale(0.98); } to { opacity: 1; transform: none; } }
+@keyframes rec { 50% { opacity: 0.35; transform: scale(0.8); } }
 @keyframes shimmer { from { background-position-x: 100%; } to { background-position-x: 0%; } }
 
 .animate-spin { animation: spin 1s linear infinite; }
@@ -310,3 +311,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
   .shimmer-text { color: var(--color-text-muted); background: none; }
 }
+
+/* Microphone is live */
+.rec-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--color-accent); animation: rec 1.2s ease-in-out infinite; flex-shrink: 0; }
+@media (prefers-reduced-motion: reduce) { .rec-dot { animation: none; } }

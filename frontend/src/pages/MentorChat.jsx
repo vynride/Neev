@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
-import { ArrowUp, LifeBuoy } from 'lucide-react';
+import { ArrowUp, LifeBuoy, Mic, Square, Volume2, X } from 'lucide-react';
 import { EscalationModal } from '../components/escalation/EscalationModal';
 import { AiMessage } from '../components/chat/AiMessage';
 import { Thinking } from '../components/chat/Thinking';
@@ -9,6 +9,8 @@ import { Avatar } from '../components/ui/Avatar';
 import { SESSIONS_CHANGED } from '../components/layout/StudentLayout';
 import { mentorService } from '../services/mentorService';
 import { projectService } from '../services/projectService';
+import { voiceService, guessLanguage, audioUrl } from '../services/voiceService';
+import { useRecorder, canRecord } from '../hooks/useRecorder';
 import { errorMessage } from '../services/apiClient';
 import { formatTime } from '../services/format';
 import { useAuth } from '../context/AuthContext';
@@ -115,12 +117,65 @@ export const MentorChat = () => {
     return () => clearInterval(timer);
   }, [waitingOnMentor, sessionId, isTyping, feedbackBusyId, loadSession]);
 
-  const handleSendMessage = async (textToSend) => {
+  // One audio player for the page, so two answers never talk over each other
+  const player = useRef(null);
+  const [speakingId, setSpeakingId] = useState(null);
+  const stopSpeaking = useCallback(() => {
+    player.current?.pause();
+    player.current = null;
+    setSpeakingId(null);
+  }, []);
+  const play = useCallback((id, url) => {
+    stopSpeaking();
+    const audio = new Audio(url);
+    player.current = audio;
+    setSpeakingId(id);
+    audio.onended = () => player.current === audio && stopSpeaking();
+    // Browsers can refuse sound the student did not ask for; the Listen button still works
+    audio.play().catch(() => player.current === audio && stopSpeaking());
+  }, [stopSpeaking]);
+  useEffect(() => stopSpeaking, [stopSpeaking, sessionId]);
+
+  const handleListen = async (msg) => {
+    if (speakingId === msg.id) return stopSpeaking();
+    try {
+      setSpeakingId(msg.id);
+      const url = msg.audioUrl || audioUrl(await voiceService.speak(msg.content, msg.language || guessLanguage(msg.content)));
+      setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, audioUrl: url } : m)));
+      if (mounted.current) play(msg.id, url);
+    } catch (err) {
+      setSpeakingId(null);
+      setError(errorMessage(err));
+    }
+  };
+
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  useEffect(() => {
+    voiceService.isEnabled().then((on) => setVoiceEnabled(on && canRecord())).catch(() => {});
+  }, []);
+
+  const handleSendMessage = (textToSend) => {
     const query = (typeof textToSend === 'string' ? textToSend : inputText).trim();
     if (!query || isTyping) return;
-
-    setMessages((prev) => [...prev, { id: `local_${Date.now()}`, sender: 'student', timestamp: formatTime(), content: query }]);
     setInputText('');
+    runAsk({ content: query }, () => mentorService.ask(projectId, query, sessionId));
+  };
+
+  const handleRecording = (blob) => {
+    if (isTyping) return;
+    runAsk({ content: '', transcribing: true }, () => voiceService.ask(projectId, blob, sessionId));
+  };
+  const recorder = useRecorder(handleRecording);
+  const startRecording = () => {
+    stopSpeaking();
+    setError('');
+    recorder.start().catch(() => setError('The microphone is blocked. Allow it in the browser address bar, then try again.'));
+  };
+
+  // Typed and spoken questions share this: show the question, wait, place the reply
+  const runAsk = async (question, send) => {
+    const localId = `local_${Date.now()}`;
+    setMessages((prev) => [...prev, { id: localId, sender: 'student', timestamp: formatTime(), ...question }]);
     setError('');
     setIsTyping(true);
     // The chat this question belongs to. If the student opens another chat while waiting,
@@ -129,7 +184,7 @@ export const MentorChat = () => {
     setPendingIn(askedIn);
 
     try {
-      const reply = await mentorService.ask(projectId, query, sessionId);
+      const reply = await send();
       const stillHere = mounted.current && heldSession.current === askedIn;
       if (reply.session_id !== sessionId) {
         window.dispatchEvent(new Event(SESSIONS_CHANGED));
@@ -139,9 +194,17 @@ export const MentorChat = () => {
         setSearchParams({ s: reply.session_id }, { replace: true });
       }
       if (!stillHere) return;
-      setMessages((prev) => [...prev, fromReply(reply)]);
+      const spoken = reply.audio ? { audioUrl: audioUrl(reply), language: reply.language } : {};
+      setMessages((prev) => [
+        ...prev.map((m) => (m.id === localId && reply.transcript ? { ...m, content: reply.transcript, transcribing: false } : m)),
+        { ...fromReply(reply), ...spoken, audio: undefined }
+      ]);
+      if (reply.audio) play(reply.message_id, spoken.audioUrl);
     } catch (err) {
-      if (mounted.current && heldSession.current === askedIn) setError(errorMessage(err));
+      if (!mounted.current || heldSession.current !== askedIn) return;
+      setError(errorMessage(err));
+      // A recording that could not be understood leaves no question behind
+      if (question.transcribing) setMessages((prev) => prev.filter((m) => m.id !== localId));
     } finally {
       setIsTyping(false);
     }
@@ -219,7 +282,7 @@ export const MentorChat = () => {
                     title={msg.timestamp}
                     style={{ maxWidth: '78%', background: 'var(--color-primary)', color: '#FFFFFF', borderRadius: '18px 18px 4px 18px', padding: '10px 16px', fontSize: '0.93rem', lineHeight: 1.55, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}
                   >
-                    {msg.content}
+                    {msg.transcribing ? <span style={{ opacity: 0.8, fontStyle: 'italic' }}>Listening to your question…</span> : msg.content}
                   </div>
                 </div>
               );
@@ -240,6 +303,17 @@ export const MentorChat = () => {
                     </span>
                     {isMentor && <span style={{ fontSize: '0.72rem', color: 'var(--color-accent-strong)' }}>your mentor</span>}
                     <span style={{ fontSize: '0.72rem', color: 'var(--color-text-subtle)' }}>{msg.timestamp}</span>
+                    {voiceEnabled && msg.content && (
+                      <button
+                        type="button"
+                        className="hover-row"
+                        onClick={() => handleListen(msg)}
+                        style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 8px', borderRadius: '8px', fontSize: '0.74rem', fontWeight: 600, color: speakingId === msg.id ? 'var(--color-primary)' : 'var(--color-text-muted)' }}
+                      >
+                        {speakingId === msg.id ? <Square size={11} fill="currentColor" /> : <Volume2 size={13} />}
+                        {speakingId === msg.id ? 'Stop' : 'Listen'}
+                      </button>
+                    )}
                   </div>
                   {isMentor ? (
                     <div style={{ background: 'var(--color-accent-subtle)', border: '1px solid var(--color-accent-border)', borderRadius: '4px 16px 16px 16px', padding: '14px 18px' }}>
@@ -285,6 +359,16 @@ export const MentorChat = () => {
               boxShadow: 'var(--shadow-md)'
             }}
           >
+            {recorder.recording && (
+              <div className="fade-enter" style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', fontSize: '0.94rem' }}>
+                <span className="rec-dot" />
+                <span style={{ fontWeight: 600 }}>Listening</span>
+                <span style={{ color: 'var(--color-text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                  {Math.floor(recorder.seconds / 60)}:{String(recorder.seconds % 60).padStart(2, '0')}
+                </span>
+                <span style={{ color: 'var(--color-text-subtle)', fontSize: '0.82rem' }}>Speak in Hindi, English or your own language</span>
+              </div>
+            )}
             <input
               ref={inputRef}
               type="text"
@@ -293,13 +377,32 @@ export const MentorChat = () => {
               onChange={(e) => setInputText(e.target.value)}
               onKeyDown={handleKeyDown}
               autoFocus
-              style={{ flex: 1, border: 'none', outline: 'none', fontSize: '0.94rem', padding: '8px 0', background: 'transparent' }}
+              style={{ flex: 1, border: 'none', outline: 'none', fontSize: '0.94rem', padding: '8px 0', background: 'transparent', display: recorder.recording ? 'none' : undefined }}
             />
+            {recorder.recording && (
+              <button type="button" className="hover-row" onClick={recorder.cancel} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 12px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
+                <X size={15} /> Cancel
+              </button>
+            )}
+            {voiceEnabled && !recorder.recording && (
+              <button
+                type="button"
+                className="hover-row"
+                onClick={startRecording}
+                disabled={busy}
+                aria-label="Ask by voice"
+                title="Ask by voice"
+                style={{ width: '36px', height: '36px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)' }}
+              >
+                <Mic size={17} />
+              </button>
+            )}
             <button
               type="button"
               className="hover-row"
               onClick={() => setEscalationOpen(true)}
               disabled={busy}
+              hidden={recorder.recording}
               title="Send a question straight to your mentor"
               style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 12px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}
             >
@@ -307,11 +410,11 @@ export const MentorChat = () => {
             </button>
             <button
               type="button"
-              onClick={() => handleSendMessage()}
-              disabled={!canSend}
-              aria-label="Send"
+              onClick={() => (recorder.recording ? recorder.stop() : handleSendMessage())}
+              disabled={!canSend && !recorder.recording}
+              aria-label={recorder.recording ? 'Send recording' : 'Send'}
               style={{
-                background: canSend ? 'var(--color-primary)' : 'var(--color-border)',
+                background: canSend || recorder.recording ? 'var(--color-primary)' : 'var(--color-border)',
                 color: '#FFFFFF',
                 width: '36px',
                 height: '36px',
@@ -320,7 +423,7 @@ export const MentorChat = () => {
                 alignItems: 'center',
                 justifyContent: 'center',
                 opacity: 1,
-                transform: canSend ? 'none' : 'scale(0.94)'
+                transform: canSend || recorder.recording ? 'none' : 'scale(0.94)'
               }}
             >
               <ArrowUp size={17} strokeWidth={2.4} />
