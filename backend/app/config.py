@@ -1,5 +1,7 @@
+import re
 from functools import lru_cache
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -28,6 +30,19 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173"
     auth_secret: str = "change-me"
     repos_dir: str = "./data/repos"
+
+    @field_validator("database_url")
+    @classmethod
+    def _asyncpg_url(cls, url: str) -> str:
+        """Accept the connection strings Supabase gives out and make them asyncpg URLs."""
+        scheme, sep, rest = url.partition("://")
+        if not sep:
+            return url
+        if scheme.split("+")[0] in ("postgres", "postgresql"):
+            scheme = "postgresql+asyncpg"
+        # asyncpg does not understand libpq's sslmode; "ssl" is its equivalent
+        rest = re.sub(r"([?&])sslmode=", r"\1ssl=", rest)
+        return f"{scheme}://{rest}"
 
     @property
     def cors_origin_list(self) -> list[str]:

@@ -1,5 +1,6 @@
 """The mentor agent: classify the question, run the tool loop, validate what comes back."""
 
+import asyncio
 import json
 import logging
 from dataclasses import dataclass, field
@@ -56,13 +57,23 @@ async def classify(message: str, history: list[dict]) -> Route:
             system=CLASSIFY_SYSTEM,
             messages=[{"role": "user", "content": prompt}],
             json_schema=CLASSIFY_SCHEMA,
-            effort="low",
+            effort="none",
             max_output_tokens=500,
         )
         return Route(**json.loads(result.text))
     except (json.JSONDecodeError, TypeError):
         log.warning("Classifier returned unusable output; using defaults")
         return Route()
+
+
+async def prefetch(ctx: ToolContext, message: str) -> str:
+    """Knowledge base and project document hits for the raw question.
+
+    Goes through run_tool so the refs count as seen and can be cited.
+    """
+    kb = await run_tool(ctx, "search_knowledge_base", {"query": message})
+    docs = await run_tool(ctx, "search_docs", {"query": message})
+    return f"## Mentor-approved answers\n{kb}\n\n## Project documents and meetings\n{docs}"
 
 
 def _validate(reply: dict, ctx: ToolContext) -> tuple[list[dict], list[dict]]:
@@ -96,7 +107,11 @@ async def answer(
     settings = get_settings()
     mongo = get_mongo()
 
-    route = await classify(message, history)
+    ctx = ToolContext(db=db, project_id=project.id, student_id=student_id)
+
+    # The classifier never touches the database, so it runs alongside the two searches the
+    # agent would otherwise spend its first tool round on.
+    route, prefetched = await asyncio.gather(classify(message, history), prefetch(ctx, message))
     student_doc = await mongo[STUDENT_MEMORY].find_one({"_id": student_id}) or {}
     project_doc = await mongo[PROJECT_MEMORY].find_one({"_id": project.id}) or {}
 
@@ -110,10 +125,13 @@ async def answer(
     )
     if extra_context:
         system += "\n\n" + extra_context
+    if route.scope == "project_specific":
+        system += "\n\n# Repository map\n" + await run_tool(ctx, "repo_overview", {})
 
-    ctx = ToolContext(db=db, project_id=project.id, student_id=student_id)
-    tools = tools_for(route.scope)
-    messages: list[dict] = [*history[-HISTORY_TURNS:], {"role": "user", "content": message}]
+    # The repo map is already in the prompt, so that tool would only waste a round
+    tools = [t for t in tools_for(route.scope) if t["name"] != "repo_overview"]
+    question = f"{message}\n\n<prefetched_context>\n{prefetched}\n</prefetched_context>"
+    messages: list[dict] = [*history[-HISTORY_TURNS:], {"role": "user", "content": question}]
     effort = "high" if previous_answer else "low"
 
     text = ""

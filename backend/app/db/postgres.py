@@ -11,11 +11,17 @@ class Base(DeclarativeBase):
     pass
 
 
-# statement_cache_size=0 keeps asyncpg compatible with Supabase's transaction pooler
+_url = get_settings().database_url
+
+# Supabase's transaction pooler cannot keep prepared statements, so caching is off there only.
+# On a direct connection the cache saves a parse round trip per query, which matters when the
+# database is in another region. pool_recycle replaces pre-ping for the same reason: a ping is
+# a full round trip on every checkout.
 engine = create_async_engine(
-    get_settings().database_url,
-    pool_pre_ping=True,
-    connect_args={"statement_cache_size": 0},
+    _url,
+    pool_recycle=300,
+    pool_size=5,
+    connect_args={"statement_cache_size": 0} if "pooler." in _url else {},
 )
 SessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 
