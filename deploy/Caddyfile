@@ -1,0 +1,6 @@
+# sslip.io resolves <ip-with-dashes>.sslip.io to that IP, so Caddy can get a real
+# Let's Encrypt certificate without buying a domain. Needs ports 80 and 443 open.
+{$SITE_HOST} {
+	encode gzip
+	reverse_proxy 127.0.0.1:8000
+}
