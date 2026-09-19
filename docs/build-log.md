@@ -8,9 +8,10 @@ Decisions and their reasons are in [`design.md`](design.md). Terms are in [`CONT
 | Area | State |
 |---|---|
 | Escalation logic | 15 of 15 checks pass (`make check`, fake model, local databases) |
-| Real-model demo path | Passes (`make smoke`) against Azure OpenAI, Supabase, Atlas and Exa |
+| Real-model demo path | Passes (`make smoke`) against Azure OpenAI (luna + terra), Supabase Mumbai, Atlas and Exa |
+| Answer latency | 12 to 18 s |
 | Deployment to EC2 | Config written, not deployed |
-| Pull requests | 12 open, stacked, none merged |
+| Pull requests | 13 open, stacked, none merged |
 
 ## Step 1: Guardrails before any code (PR #1)
 
@@ -148,6 +149,26 @@ Tool rounds dropped from several to one or none. End-to-end was still about 30 s
 ### Safety fix found on the way
 
 `make check` reseeds. With `.env` pointing at hosted databases it would have wiped the ingested data. It is now pinned to the local Docker databases.
+
+## Step 12: Database moved to Mumbai, terra switched on, meeting helper removed (PRs #12, #13)
+
+- Supabase project recreated in Mumbai; reseeded and re-ingested. Ingest took 58 s (was 3 min 20 s): the closer database, plus repo maps already stored in Atlas, so only changed files are re-described.
+- `MODEL_STRONG=gpt-5.6-terra`. Same tool-calling check as before: works on Responses, fails on Chat Completions.
+- Meeting helper removed by a PR on top of the stack rather than by rewriting the branches under open PRs.
+
+Measured after the changes:
+
+| Measure | Before | After |
+|---|---|---|
+| New Postgres session | 3,150 ms, then 1,500 ms after tuning | about 300 ms |
+| Code question needing file reads | about 33 s | 18 s |
+| Requirement question, no tool round | about 30 s | 13 s |
+| Generic Git question | not measured | 12 s |
+| Full `make smoke` | 4 min 05 s | 1 min 36 s, with one step fewer |
+
+What is left of the 12 to 18 seconds is model time: about 3 s to classify, 4 s to plan tool calls when needed, and 6 to 8 s to write the answer. The next lever is streaming the answer to the frontend, which changes how long the wait feels, not how long it is.
+
+`make check`: 15 of 15. `make smoke`: passes. Deflection in that run: 0.833 over 6 questions.
 
 ## Known gaps
 
