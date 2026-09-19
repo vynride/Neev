@@ -2,13 +2,14 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require_role
 from app.db.mongo import PROJECT_MEMORY, SESSIONS, STUDENT_MEMORY, get_mongo
 from app.db.postgres import get_db
-from app.models import Project, Ticket, User
+from app.integrations import clickup
+from app.models import Assignment, MetricEvent, Project, StudentScore, Task, Ticket, User
 from app.services import escalation
 from app.services.sessions import deliver_mentor_answer
 
@@ -130,3 +131,245 @@ async def get_metrics(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     return await escalation.metrics(db, user.id if user.role == "mentor" else None)
+
+
+# --- the mentor's students and projects ----------------------------------------------------------
+
+
+async def _assignments(user: User, db: AsyncSession) -> list[Assignment]:
+    stmt = select(Assignment)
+    if user.role == "mentor":
+        stmt = stmt.where(Assignment.mentor_id == user.id)
+    return list((await db.execute(stmt)).scalars().all())
+
+
+def _task_counts(tasks: list[Task]) -> dict:
+    today = datetime.now(timezone.utc).date()
+    done = sum(t.status == "done" for t in tasks)
+    return {
+        "total": len(tasks),
+        "done": done,
+        "in_progress": sum(t.status in ("in progress", "review") for t in tasks),
+        "overdue": sum(
+            t.status != "done" and t.due_date is not None and t.due_date < today for t in tasks
+        ),
+        "progress": round(100 * done / len(tasks)) if tasks else 0,
+    }
+
+
+def _score_summary(score: StudentScore | None) -> dict | None:
+    if score is None:
+        return None
+    speech = list((score.samvad_saathi or {}).get("speech", {}).values())
+    return {
+        "codeguru_avg": (score.codeguru or {}).get("monthly_avg"),
+        "attendance_pct": (score.codeguru or {}).get("attendance_pct"),
+        "speech_avg": round(sum(speech) / len(speech)) if speech else None,
+    }
+
+
+@router.get("/projects")
+async def list_projects(
+    user: User = Depends(require_role("mentor", "admin")), db: AsyncSession = Depends(get_db)
+) -> list[dict]:
+    """The mentor's projects with task progress, for the dashboard."""
+    assignments = await _assignments(user, db)
+    names = {u.id: u.name for u in (await db.execute(select(User))).scalars()}
+    out = []
+    for project_id in sorted({a.project_id for a in assignments}):
+        project = await db.get(Project, project_id)
+        if project is None:
+            continue
+        await clickup.sync_project_tasks(db, project_id)
+        tasks = (
+            (await db.execute(select(Task).where(Task.project_id == project_id))).scalars().all()
+        )
+        open_tickets = await db.scalar(
+            select(func.count())
+            .select_from(Ticket)
+            .where(
+                Ticket.project_id == project_id, Ticket.status == "open", Ticket.kind == "ticket"
+            )
+        )
+        out.append(
+            {
+                "id": project.id,
+                "name": project.name,
+                "client_name": project.client_name,
+                "stage": project.stage,
+                "deadline": project.deadline.isoformat() if project.deadline else None,
+                "students": [
+                    {"id": a.student_id, "name": names.get(a.student_id, a.student_id)}
+                    for a in assignments
+                    if a.project_id == project_id
+                ],
+                "tasks": _task_counts(list(tasks)),
+                "open_tickets": open_tickets or 0,
+            }
+        )
+    return out
+
+
+async def _event_counts(db: AsyncSession) -> dict[str, dict[str, int]]:
+    rows = await db.execute(
+        select(MetricEvent.student_id, MetricEvent.kind, func.count()).group_by(
+            MetricEvent.student_id, MetricEvent.kind
+        )
+    )
+    counts: dict[str, dict[str, int]] = {}
+    for student_id, kind, n in rows.all():
+        counts.setdefault(student_id, {})[kind] = n
+    return counts
+
+
+@router.get("/students")
+async def list_students(
+    user: User = Depends(require_role("mentor", "admin")), db: AsyncSession = Depends(get_db)
+) -> list[dict]:
+    assignments = await _assignments(user, db)
+    events = await _event_counts(db)
+    projects = {p.id: p for p in (await db.execute(select(Project))).scalars()}
+    memories = {
+        d["_id"]: d
+        async for d in get_mongo()[STUDENT_MEMORY].find(
+            {"_id": {"$in": [a.student_id for a in assignments]}}
+        )
+    }
+    out = []
+    for a in sorted(assignments, key=lambda a: a.student_id):
+        student = await db.get(User, a.student_id)
+        if student is None:
+            continue
+        tasks = (
+            (
+                await db.execute(
+                    select(Task).where(
+                        Task.project_id == a.project_id, Task.assignee_id == a.student_id
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        open_tickets = await db.scalar(
+            select(func.count())
+            .select_from(Ticket)
+            .where(
+                Ticket.student_id == a.student_id, Ticket.status == "open", Ticket.kind == "ticket"
+            )
+        )
+        mine = events.get(a.student_id, {})
+        struggles = memories.get(a.student_id, {}).get("struggles", {})
+        top = sorted(struggles.items(), key=lambda kv: -kv[1]["count"])[:2]
+        project = projects.get(a.project_id)
+        out.append(
+            {
+                "id": student.id,
+                "name": student.name,
+                "email": student.email,
+                "project": {"id": a.project_id, "name": project.name if project else a.project_id},
+                "scores": _score_summary(await db.get(StudentScore, a.student_id)),
+                "tasks": _task_counts(list(tasks)),
+                "questions": mine.get("question", 0),
+                "escalated": mine.get("escalated", 0),
+                "open_tickets": open_tickets or 0,
+                "struggles": [{"topic": k, "count": v["count"]} for k, v in top],
+            }
+        )
+    return out
+
+
+@router.get("/students/{student_id}")
+async def get_student(
+    student_id: str,
+    user: User = Depends(require_role("mentor", "admin")),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """One student: scores, what the AI remembers, their tasks, tickets and recent chats."""
+    assignments = [a for a in await _assignments(user, db) if a.student_id == student_id]
+    student = await db.get(User, student_id)
+    if not assignments or student is None:
+        raise HTTPException(404, "Not one of your students")
+
+    score = await db.get(StudentScore, student_id)
+    mongo = get_mongo()
+    memory = await mongo[STUDENT_MEMORY].find_one({"_id": student_id}) or {}
+    projects = []
+    for a in assignments:
+        project = await db.get(Project, a.project_id)
+        tasks = (
+            (
+                await db.execute(
+                    select(Task)
+                    .where(Task.project_id == a.project_id, Task.assignee_id == student_id)
+                    .order_by(Task.due_date)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        projects.append(
+            {
+                "id": a.project_id,
+                "name": project.name if project else a.project_id,
+                "client_name": project.client_name if project else "",
+                "counts": _task_counts(list(tasks)),
+                "tasks": [
+                    {
+                        "id": t.id,
+                        "name": t.name,
+                        "status": t.status,
+                        "due_date": t.due_date.isoformat() if t.due_date else None,
+                    }
+                    for t in tasks
+                ],
+            }
+        )
+    tickets = (
+        (
+            await db.execute(
+                select(Ticket)
+                .where(Ticket.student_id == student_id)
+                .order_by(Ticket.created_at.desc())
+                .limit(20)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    sessions = (
+        await mongo[SESSIONS]
+        .find(
+            {"student_id": student_id}, {"turns": {"$slice": 1}, "updated_at": 1, "project_id": 1}
+        )
+        .sort("updated_at", -1)
+        .to_list(15)
+    )
+    events = (await _event_counts(db)).get(student_id, {})
+    return {
+        "id": student.id,
+        "name": student.name,
+        "email": student.email,
+        "scores": {"codeguru": score.codeguru, "samvad_saathi": score.samvad_saathi}
+        if score
+        else None,
+        "memory": memory.get("markdown", ""),
+        "memory_edited_by": memory.get("edited_by"),
+        "struggles": [
+            {"topic": k, "count": v["count"], "category": v.get("category")}
+            for k, v in sorted(memory.get("struggles", {}).items(), key=lambda kv: -kv[1]["count"])
+        ],
+        "projects": projects,
+        "tickets": [ticket_out(t) for t in tickets],
+        "sessions": [
+            {
+                "id": s["_id"],
+                "updated_at": s["updated_at"].isoformat(),
+                "first_message": s["turns"][0]["content"][:140] if s.get("turns") else "",
+            }
+            for s in sessions
+        ],
+        "questions": events.get("question", 0),
+        "escalated": events.get("escalated", 0),
+        "answered_from_kb": events.get("kb_hit", 0),
+    }

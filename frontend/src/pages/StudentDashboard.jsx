@@ -1,25 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Sparkles,
-  BookOpen,
-  CheckSquare,
-  Network,
-  Calendar,
-  AlertCircle,
-  ArrowRight,
-  TrendingUp,
-  CheckCircle2,
-  ExternalLink,
-  ChevronRight
-} from 'lucide-react';
-import { Card, Badge } from '../components/ui/Card';
+import { ListChecks, CheckCircle2, AlarmClock, Eye, Sparkles, MessageSquare, PhoneCall, CalendarClock, ArrowRight } from 'lucide-react';
+import { PageHeader, StatTile, SectionCard, ProgressBar, TextLink, EmptyState, Loading } from '../components/ui/Bits';
+import { Badge } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { studentService } from '../services/studentService';
 import { projectService } from '../services/projectService';
+import { mentorService } from '../services/mentorService';
 import { errorMessage } from '../services/apiClient';
-import { formatDate } from '../services/format';
+import { formatDate, statusLabel, isOverdue, relativeDay } from '../services/format';
 import { useAuth } from '../context/AuthContext';
+
+const daysLeft = (iso) => (iso ? Math.ceil((new Date(`${iso}T00:00:00`) - new Date()) / 86400000) : null);
 
 export const StudentDashboard = () => {
   const { user, projectId } = useAuth();
@@ -31,11 +23,12 @@ export const StudentDashboard = () => {
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
-        const [project, profile] = await Promise.all([
+        const [project, profile, sessions] = await Promise.all([
           projectService.getProject(projectId),
-          studentService.getProfile(user.id)
+          studentService.getProfile(user.id),
+          mentorService.listSessions(projectId)
         ]);
-        setData({ project, profile });
+        setData({ project, profile, sessions });
       } catch (err) {
         setError(errorMessage(err));
       } finally {
@@ -46,268 +39,131 @@ export const StudentDashboard = () => {
     else setLoading(false);
   }, [projectId, user.id]);
 
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-        <div className="skeleton" style={{ height: '80px' }} />
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
-          <div className="skeleton" style={{ height: '300px' }} />
-          <div className="skeleton" style={{ height: '300px' }} />
-        </div>
-      </div>
-    );
-  }
-
+  if (loading) return <Loading />;
   if (error) return <div className="notice-error">{error}</div>;
   if (!data) {
     return <div className="notice-error">You are not assigned to a project yet. Ask your programme coordinator.</div>;
   }
 
-  const { project, profile } = data;
-  const { strengths, focusAreas } = profile;
-  const myTasks = project.tasks.filter((t) => t.assignee_id === user.id && t.status !== 'done');
-  const stats = {
-    totalTasks: project.metrics.total,
-    completed: project.metrics.completed,
-    overdue: project.metrics.overdue,
-    inReview: project.metrics.inReview
-  };
-  const quickActions = [
-    { id: 'ask', label: 'Ask the AI mentor', path: '/student/mentor' },
-    { id: 'tasks', label: `My open tasks (${myTasks.length})`, path: '/student/project?tab=tasks' },
-    { id: 'calls', label: 'Client call notes', path: '/student/project?tab=calls' },
-    { id: 'kb', label: 'Answers from mentors', path: '/student/knowledge' }
-  ];
+  const { project, profile, sessions } = data;
+  const mine = project.tasks.filter((t) => t.assignee_id === user.id);
+  const upNext = mine.filter((t) => t.status !== 'done').slice(0, 6);
+  const myOverdue = mine.filter(isOverdue).length;
+  const lastCall = project.meetings[project.meetings.length - 1];
+  const left = daysLeft(project.deadline);
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-
-  const handleQuickAction = (action) => {
-    if (action.path) {
-      navigate(action.path);
-    }
-  };
+  const ask = (prefill) => navigate('/student/mentor', { state: { prefill } });
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
-      {/* Top Greeting Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
-        <div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text-main)', letterSpacing: '-0.02em' }}>
-            {greeting}, {user.name.split(' ')[0]}!
-          </h1>
-          <p style={{ fontSize: '0.92rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-            Keep going. Small steps make big progress.
-          </p>
-        </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+      <PageHeader
+        title={`${greeting}, ${user.name.split(' ')[0]}`}
+        subtitle={myOverdue ? `You have ${myOverdue} overdue task${myOverdue > 1 ? 's' : ''}. Start there.` : 'You are on track. Keep going.'}
+      >
+        <Button onClick={() => navigate('/student/mentor')} variant="primary" icon={Sparkles}>Ask the AI mentor</Button>
+      </PageHeader>
 
-        {/* Quick Help CTA */}
-        <Button
-          onClick={() => navigate('/student/mentor')}
-          variant="primary"
-        >
-          Ask AI Mentor
-        </Button>
+      <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
+        <StatTile icon={ListChecks} label="My open tasks" value={mine.filter((t) => t.status !== 'done').length} hint={`${mine.length} assigned to me`} />
+        <StatTile icon={AlarmClock} tone="accent" label="Overdue" value={myOverdue} hint={myOverdue ? 'Needs attention' : 'Nothing late'} />
+        <StatTile icon={Eye} label="In review" value={mine.filter((t) => t.status === 'review').length} hint="Waiting on feedback" />
+        <StatTile icon={CheckCircle2} label="Project complete" value={`${project.progress}%`} hint={`${project.metrics.completed} of ${project.metrics.total} tasks`} />
       </div>
 
-      {/* Main Grid: 2 Columns matching Reference Layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.7fr) minmax(0, 1.1fr)', gap: '28px' }}>
-        {/* Left Column: Project Card, Statistics, Next Up */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          {/* Main Project Card */}
-          <Card style={{ position: 'relative', overflow: 'hidden' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.6fr) minmax(0, 1fr)', gap: '18px', alignItems: 'start' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+          {/* Project */}
+          <div className="card" style={{ padding: '22px 24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
               <div>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-text-main)' }}>
-                  {project.name}
-                </h3>
-                <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
-                  Client: <strong style={{ color: 'var(--color-text-main)' }}>{project.client_name}</strong>
-                </p>
+                <div style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-subtle)' }}>Your project</div>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, letterSpacing: '-0.02em', marginTop: '2px' }}>{project.name}</h3>
+                <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>for {project.client_name}</p>
               </div>
               <Badge variant="green">{project.stage}</Badge>
             </div>
-
-            {/* Progress Section */}
-            <div style={{ marginTop: '18px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '8px' }}>
-                <span style={{ fontWeight: 600, color: 'var(--color-text-muted)' }}>Tasks Completed</span>
-                <span style={{ fontWeight: 800, color: 'var(--color-primary)' }}>{project.progress}%</span>
-              </div>
-              <div style={{ width: '100%', height: '8px', background: 'var(--color-border)', borderRadius: '999px', overflow: 'hidden' }}>
-                <div
-                  style={{
-                    width: `${project.progress}%`,
-                    height: '100%',
-                    background: 'var(--color-primary)',
-                    borderRadius: '999px',
-                    transition: 'width 0.5s ease'
-                  }}
-                />
-              </div>
+            <div style={{ margin: '18px 0 8px', display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
+              <span style={{ color: 'var(--color-text-muted)' }}>{project.metrics.completed} done · {project.metrics.inProgress + project.metrics.inReview} in progress · {project.metrics.pending} to do</span>
+              <strong>{project.progress}%</strong>
             </div>
-
-            {/* Deadline and Details Row */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginTop: '20px',
-                paddingTop: '16px',
-                borderTop: '1px solid var(--color-border)',
-                fontSize: '0.85rem'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-muted)' }}>
-                <span>Deadline: <strong style={{ color: 'var(--color-text-main)' }}>{formatDate(project.deadline)}</strong></span>
-              </div>
-
-              <button
-                onClick={() => navigate('/student/project')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  fontWeight: 700,
-                  color: 'var(--color-primary)',
-                  fontSize: '0.85rem'
-                }}
-              >
-                View Project Details <ChevronRight size={16} />
-              </button>
+            <ProgressBar value={project.progress} height={8} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px', flexWrap: 'wrap', gap: '10px' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', color: left != null && left < 14 ? 'var(--color-accent-strong)' : 'var(--color-text-muted)' }}>
+                <CalendarClock size={14} /> Due {formatDate(project.deadline)}{left != null && left >= 0 ? ` · ${left} days left` : ''}
+              </span>
+              <TextLink onClick={() => navigate('/student/project?tab=overview')}>Project details</TextLink>
             </div>
-          </Card>
-
-          {/* 4 Statistics KPI Cards Row */}
-          <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
-            <Card style={{ padding: '16px 20px', textAlign: 'center' }}>
-              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--color-text-main)' }}>
-                {stats.totalTasks}
-              </div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', fontWeight: 600, marginTop: '2px' }}>
-                Total Tasks
-              </div>
-            </Card>
-
-            <Card style={{ padding: '16px 20px', textAlign: 'center' }}>
-              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--color-primary)' }}>
-                {stats.completed}
-              </div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', fontWeight: 600, marginTop: '2px' }}>
-                Completed
-              </div>
-            </Card>
-
-            <Card style={{ padding: '16px 20px', textAlign: 'center' }}>
-              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--color-accent)' }}>
-                {stats.overdue}
-              </div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', fontWeight: 600, marginTop: '2px' }}>
-                Overdue
-              </div>
-            </Card>
-
-            <Card style={{ padding: '16px 20px', textAlign: 'center' }}>
-              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--color-info)' }}>
-                {stats.inReview}
-              </div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', fontWeight: 600, marginTop: '2px' }}>
-                In Review
-              </div>
-            </Card>
           </div>
+
+          {/* Up next */}
+          <SectionCard title="Up next for you" hint="Your open tasks, soonest first" action={<TextLink onClick={() => navigate('/student/project?tab=tasks')}>All tasks</TextLink>}>
+            {upNext.length === 0 ? (
+              <EmptyState icon={CheckCircle2}>No open tasks. Nicely done.</EmptyState>
+            ) : (
+              <div className="stagger" style={{ display: 'flex', flexDirection: 'column' }}>
+                {upNext.map((t) => (
+                  <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 0', borderTop: '1px solid var(--color-border-subtle)' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '0.88rem', fontWeight: 600 }}>{t.name}</div>
+                      <div style={{ fontSize: '0.74rem', color: isOverdue(t) ? 'var(--color-accent-strong)' : 'var(--color-text-subtle)', fontWeight: isOverdue(t) ? 700 : 400 }}>
+                        {isOverdue(t) ? 'Overdue · was due ' : 'Due '}{formatDate(t.due_date)}
+                      </div>
+                    </div>
+                    <Badge variant={t.status === 'to do' ? 'gray' : 'orange'}>{statusLabel(t.status)}</Badge>
+                    <button className="hover-row" title="Ask the AI mentor about this task" onClick={() => ask(`Help me with my task "${t.name}". `)} style={{ padding: '6px', borderRadius: 'var(--radius-sm)', color: 'var(--color-primary)' }}>
+                      <Sparkles size={15} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </SectionCard>
         </div>
 
-        {/* Right Column: Quick Actions, Strengths & Focus Areas */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          {/* Quick Actions Panel */}
-          <Card>
-            <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text-main)', marginBottom: '16px' }}>
-              Quick Actions
-            </h4>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {quickActions.map((action) => {
-                let Icon = Sparkles;
-                if (action.icon === 'BookOpen') Icon = BookOpen;
-                else if (action.icon === 'CheckSquare') Icon = CheckSquare;
-                else if (action.icon === 'Network') Icon = Network;
-
-                return (
-                  <button
-                    key={action.id}
-                    className="hover-row"
-                    onClick={() => handleQuickAction(action)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '12px 16px',
-                      borderRadius: 'var(--radius-md)',
-                      border: '1px solid var(--color-border)',
-                      fontSize: '0.88rem',
-                      fontWeight: 600,
-                      color: 'var(--color-text-main)',
-                      transition: 'all 0.15s ease'
-                    }}
-                  >
-                    <span style={{ fontWeight: 600 }}>{action.label}</span>
-                    <ChevronRight size={16} color="var(--color-text-subtle)" />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+          <SectionCard title="Pick up where you left off" hint="Your recent chats with the AI mentor">
+            {sessions.length === 0 ? (
+              <EmptyState icon={MessageSquare}>No chats yet. Ask your first question.</EmptyState>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', margin: '0 -8px' }}>
+                {sessions.slice(0, 4).map((s) => (
+                  <button key={s.id} className="hover-row" onClick={() => navigate(`/student/mentor?s=${s.id}`)} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', padding: '8px', borderRadius: 'var(--radius-md)', textAlign: 'left' }}>
+                    <MessageSquare size={14} color="var(--color-text-subtle)" style={{ flexShrink: 0, marginTop: '4px' }} />
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontSize: '0.84rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.first_message || 'Chat'}</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--color-text-subtle)' }}>{relativeDay(s.updated_at)}</div>
+                    </div>
                   </button>
-                );
-              })}
-            </div>
-          </Card>
-
-          {/* Your Strengths & Focus Areas */}
-          <Card>
-            <div style={{ marginBottom: '18px' }}>
-              <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-text-main)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '10px' }}>
-                Your Strengths
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                {strengths.length === 0 && <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>No scores yet</span>}
-                {strengths.map((str) => (
-                  <span
-                    key={str}
-                    style={{
-                      background: 'var(--color-primary-subtle)',
-                      color: 'var(--color-primary)',
-                      padding: '6px 12px',
-                      borderRadius: 'var(--radius-full)',
-                      fontSize: '0.8rem',
-                      fontWeight: 700
-                    }}
-                  >
-                    {str}
-                  </span>
                 ))}
               </div>
-            </div>
+            )}
+          </SectionCard>
 
-            <div style={{ paddingTop: '16px', borderTop: '1px solid var(--color-border)' }}>
-              <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-text-main)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '10px' }}>
-                Areas to Focus
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                {focusAreas.map((area) => (
-                  <span
-                    key={area}
-                    style={{
-                      background: 'var(--color-accent-subtle)',
-                      color: 'var(--color-accent-strong)',
-                      padding: '6px 12px',
-                      borderRadius: 'var(--radius-full)',
-                      fontSize: '0.8rem',
-                      fontWeight: 700
-                    }}
-                  >
-                    {area}
-                  </span>
-                ))}
-              </div>
+          {lastCall && (
+            <SectionCard title="Latest client call" hint={`${lastCall.title} · ${formatDate(lastCall.started_at)}`} action={<PhoneCall size={15} color="var(--color-text-subtle)" />}>
+              <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 5, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                {lastCall.summary || 'No summary yet.'}
+              </p>
+              <button onClick={() => navigate('/student/project?tab=calls')} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '10px', fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-primary)', width: 'fit-content' }}>
+                All calls <ArrowRight size={13} />
+              </button>
+            </SectionCard>
+          )}
+
+          <SectionCard title="Your strengths and focus areas" hint="From CodeGuru and Samvad Saathi" action={<TextLink onClick={() => navigate('/student/profile')}>Scores</TextLink>}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              {profile.strengths.map((s) => <Badge key={s} variant="green">{s}</Badge>)}
+              {profile.focusAreas.map((s) => <Badge key={s} variant="orange">{s}</Badge>)}
+              {profile.strengths.length + profile.focusAreas.length === 0 && (
+                <span style={{ fontSize: '0.84rem', color: 'var(--color-text-subtle)' }}>No scores yet.</span>
+              )}
             </div>
-          </Card>
+            <div style={{ display: 'flex', gap: '14px', marginTop: '12px', fontSize: '0.72rem', color: 'var(--color-text-subtle)' }}>
+              <span>● <span style={{ color: 'var(--color-primary)' }}>Strong</span></span>
+              <span>● <span style={{ color: 'var(--color-accent-strong)' }}>Worth practising</span></span>
+            </div>
+          </SectionCard>
         </div>
       </div>
     </div>

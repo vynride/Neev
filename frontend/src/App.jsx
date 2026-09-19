@@ -9,7 +9,6 @@ import { ProjectOverview } from './pages/ProjectOverview';
 import { MentorChat } from './pages/MentorChat';
 import { KnowledgeAndRequirements } from './pages/KnowledgeAndRequirements';
 import { StudentProfile } from './pages/StudentProfile';
-import { MentorDesk } from './pages/MentorDesk';
 
 // Mentor Experience Dashboard
 import MentorLayout from './pages/mentor/MentorLayout';
@@ -59,17 +58,7 @@ export default function App() {
             <Route path="profile" element={<StudentProfile />} />
           </Route>
 
-          {/* Human mentor's desk, on live data: escalated tickets, AI drafts, load metrics */}
-          <Route
-            path="/mentor/desk"
-            element={
-              <ProtectedRoute roles={['mentor', 'admin']}>
-                <MentorDesk />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Mentor Experience Dashboard (Frontend 2). These pages still read sample data. */}
+          {/* Mentor desk: dashboard, escalations and students, all on live data */}
           <Route
             path="/mentor"
             element={
@@ -78,7 +67,8 @@ export default function App() {
               </ProtectedRoute>
             }
           >
-            <Route index element={<Navigate to="/mentor/desk" replace />} />
+            <Route index element={<Navigate to="/mentor/dashboard" replace />} />
+            <Route path="desk" element={<Navigate to="/mentor/escalations" replace />} />
             <Route path="dashboard" element={<MentorDashboard />} />
             <Route path="escalations" element={<Escalations />} />
             <Route path="escalations/:id" element={<EscalationDetails />} />
