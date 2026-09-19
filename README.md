@@ -5,6 +5,7 @@ AI mentor for Barabari Collective students working on freelance client projects.
 ## Docs
 
 - [`docs/design.md`](docs/design.md): decisions, architecture, API contract, data shapes
+- [`docs/build-log.md`](docs/build-log.md): what was built step by step, what was tested, what was measured
 - [`CONTEXT.md`](CONTEXT.md): glossary
 - [`docs/project-scope/`](docs/project-scope/): challenge statement, Q&A transcript, sample questions
 - [`deploy/`](deploy/): EC2 setup (Caddy with automatic HTTPS, systemd service)
@@ -23,7 +24,7 @@ make dev                                # API on http://localhost:8000, docs at 
 ## Checks
 
 ```sh
-make check    # 15 checks of the escalation flow with a fake LLM, no keys needed
+make check    # 15 checks of the escalation flow with a fake LLM; uses the local databases only (make db)
 make smoke    # the demo path against a running server with real models
 cd backend && uv run python -m scripts.check_llm        # which OpenAI API shape works with tools
 cd backend && uv run python -m scripts.replay_meeting   # simulate a live client call

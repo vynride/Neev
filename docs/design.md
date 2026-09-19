@@ -80,7 +80,9 @@ flowchart LR
 ```
 
 - **LLM access** goes through an `LLMClient` interface with two implementations: Responses API and Chat Completions. `LLM_API` selects one. `temperature` is never sent. Output limits use the parameter each API expects.
-- **Models**: `MODEL_FAST` classifies and summarises. `MODEL_STRONG` answers, retries and writes project cards.
+- **Models**: `MODEL_FAST` classifies and summarises. `MODEL_STRONG` answers, retries and writes project cards. Both currently run on `gpt-5.6-luna`, the only GPT-5.6 deployment on the Azure resource.
+- **API shape**: Responses API, settled by test. Chat Completions rejects tools combined with reasoning on these models.
+- **Latency**: the knowledge base and document searches run while the classifier runs, and the repo map is in the prompt, so most answers need one tool round or none.
 
 ### Context strategy
 
