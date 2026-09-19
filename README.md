@@ -19,6 +19,7 @@ make db                                 # optional: local Postgres + MongoDB in 
 make seed                               # users, projects, briefs, transcripts, tasks
 make ingest                             # needs LLM keys: chunks, project cards, repo maps
 make dev                                # API on http://localhost:8000, docs at /docs
+cd backend && uv run python -m scripts.clickup_setup   # optional: needs CLICKUP_TOKEN, creates the lists and tasks
 ```
 
 ## Checks

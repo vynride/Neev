@@ -11,7 +11,8 @@ Decisions and their reasons are in [`design.md`](design.md). Terms are in [`CONT
 | Real-model demo path | Passes (`make smoke`) against Azure OpenAI (luna + terra), Supabase Mumbai, Atlas and Exa |
 | Answer latency | 12 to 18 s |
 | Deployment to EC2 | Config written, not deployed |
-| Pull requests | 13 open, stacked, none merged |
+| Pull requests | #1 to #13 merged into `main` |
+| ClickUp | Working against a real workspace, both directions |
 
 ## Step 1: Guardrails before any code (PR #1)
 
@@ -169,6 +170,27 @@ Measured after the changes:
 What is left of the 12 to 18 seconds is model time: about 3 s to classify, 4 s to plan tool calls when needed, and 6 to 8 s to write the answer. The next lever is streaming the answer to the frontend, which changes how long the wait feels, not how long it is.
 
 `make check`: 15 of 15. `make smoke`: passes. Deflection in that run: 0.833 over 6 questions.
+
+## Step 13: ClickUp, tested against a real workspace (PR #15)
+
+Built and verified against a real free-plan workspace, not a mock.
+
+- `scripts.clickup_setup` created one space, four lists and 30 tasks in 1 min 16 s.
+- Read path: all 30 tasks round-trip with 0 mismatches in status, due date and priority. Completing and reopening a task in ClickUp showed up on our side after a sync.
+- Write path, through the running app: a student asked for her mentor; a high-priority task appeared in "Mentor support", tagged with its category. Resolving the ticket added the mentor's answer as a comment and set the task to `complete`.
+- Agent: "What is pending for me this week, and what is overdue?" cited three live tasks and correctly said that a task due today is not overdue yet.
+
+Found by testing against the real API:
+
+| Finding | Fix |
+|---|---|
+| Every due date came back one day early. ClickUp stores a date-only due date as 4:00 AM in the user's timezone (Asia/Kolkata here), which is the previous day in UTC. | Dates are written and read in the workspace user's timezone, saved at setup. |
+| A new space has only `to do` and `complete`, and the API answers "Status does not exist" for anything else. | `in progress` and `review` travel as tags. Setup promotes them to real statuses once the space has them. |
+| `make check` would have created tasks in the real workspace once ClickUp was enabled in `.env`. | The check pins `CLICKUP_ENABLED=false`. |
+
+Found on the way, unrelated to ClickUp: the Supabase direct host is IPv6-only. It worked until this machine moved to an IPv4-only network, then failed with "Network is unreachable". `.env` now uses the session pooler, which works on both. `.env.example` says so.
+
+To make the ClickUp board columns match for a demo, add `in progress` and `review` as statuses on the space (Space settings > Statuses), then run the setup script again.
 
 ## Known gaps
 

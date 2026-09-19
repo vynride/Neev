@@ -16,6 +16,7 @@ from app.agent.search import search_chunks, search_kb
 from app.config import get_settings
 from app.db.mongo import REPO_MAPS, SESSION_SUMMARIES, get_mongo
 from app.ingest import repo
+from app.integrations import clickup
 from app.models import StudentScore, Task
 
 
@@ -159,6 +160,7 @@ def _grep(ctx: ToolContext, pattern: str, glob: str = "*") -> str:
 
 
 async def _get_tasks(ctx: ToolContext, only_open: bool) -> str:
+    await clickup.sync_project_tasks(ctx.db, ctx.project_id)  # no-op unless ClickUp is enabled
     stmt = select(Task).where(Task.project_id == ctx.project_id).order_by(Task.due_date)
     tasks = (await ctx.db.execute(stmt)).scalars().all()
     if only_open:

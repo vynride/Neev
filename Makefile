@@ -22,7 +22,8 @@ ingest:
 # Escalation flow with a fake LLM: needs `make db`, not keys.
 # It reseeds (a knowledge base entry left by an earlier run would answer the test question),
 # so it is pinned to the local Docker databases and can never wipe the hosted ones in .env.
-LOCAL_DB = DATABASE_URL=postgresql+asyncpg://mentor@localhost:5432/mentor MONGO_URL=mongodb://localhost:27017
+# ClickUp is switched off for it too: a test must not create tasks in a real workspace.
+LOCAL_DB = DATABASE_URL=postgresql+asyncpg://mentor@localhost:5432/mentor MONGO_URL=mongodb://localhost:27017 CLICKUP_ENABLED=false
 check:
 	cd backend && $(LOCAL_DB) uv run python -W ignore -m app.seed
 	cd backend && $(LOCAL_DB) uv run python -W ignore -m scripts.flow_check

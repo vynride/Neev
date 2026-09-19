@@ -7,7 +7,8 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent.search import KB_MATCH_THRESHOLD, embed_or_none, search_kb
-from app.models import Assignment, KBEntry, MetricEvent, Ticket
+from app.integrations import clickup
+from app.models import Assignment, KBEntry, MetricEvent, Project, Ticket, User
 
 
 def _id(prefix: str) -> str:
@@ -69,6 +70,12 @@ async def create_ticket(
         )
     )
     await db.commit()
+    if kind == "ticket":
+        student = await db.get(User, student_id)
+        project = await db.get(Project, project_id)
+        await clickup.open_support_task(
+            ticket, student.name if student else student_id, project.name if project else project_id
+        )
     return ticket
 
 
@@ -90,6 +97,9 @@ async def resolve_ticket(db: AsyncSession, ticket: Ticket, answer: str) -> KBEnt
         entry.embedding = await embed_or_none(f"{ticket.question}\n{answer}")
         db.add(entry)
     await db.commit()
+    if ticket.kind == "ticket":
+        mentor = await db.get(User, ticket.mentor_id)
+        await clickup.close_support_task(ticket.id, mentor.name if mentor else "mentor", answer)
     return entry
 
 
