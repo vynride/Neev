@@ -40,7 +40,8 @@ export const LandingPage = () => {
           <a href="#about" style={{ fontSize: '0.92rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Home</a>
           <a href="#about" style={{ fontSize: '0.92rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>About</a>
           <a href="#impact" style={{ fontSize: '0.92rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Impact</a>
-          <Link to="/login" style={{ fontSize: '0.92rem', fontWeight: 600, color: 'var(--color-primary)' }}>Login</Link>
+          <Link to="/login" style={{ fontSize: '0.92rem', fontWeight: 600, color: 'var(--color-primary)' }}>Student Login</Link>
+          <Link to="/login" style={{ fontSize: '0.92rem', fontWeight: 600, color: 'var(--color-accent)' }}>Mentor Portal</Link>
           <Button onClick={() => navigate('/login')} variant="primary" size="md">
             Get Started <ArrowRight size={16} />
           </Button>

@@ -50,4 +50,4 @@ export const useAuth = () => {
   return context;
 };
 
-export const homeFor = (user) => (user?.role === 'student' ? '/student/dashboard' : '/mentor');
+export const homeFor = (user) => (user?.role === 'student' ? '/student/dashboard' : '/mentor/desk');
