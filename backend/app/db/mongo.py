@@ -21,6 +21,7 @@ PROJECT_MEMORY = "project_memory"
 MEETINGS = "meetings"
 DOCUMENTS = "documents"
 REPO_MAPS = "repo_maps"
+INTEGRATIONS = "integrations"  # ids of things we created in ClickUp
 
 
 async def init_mongo() -> None:

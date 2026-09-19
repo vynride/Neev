@@ -19,8 +19,8 @@ The React frontend is built by another team against the API below.
 
 | Phase | Features |
 |---|---|
-| MVP | Grounded chat, category routing, escalation sequence, mentor tickets with draft answers, knowledge base, memory, embeddings, EC2 deploy |
-| After MVP, in order | Voice push-to-talk (Sarvam), nudges, ClickUp over REST, admin overview, voice rehearsal mode, GitHub webhook sync |
+| MVP | Grounded chat, category routing, escalation sequence, mentor tickets with draft answers, knowledge base, memory, embeddings, ClickUp over REST, EC2 deploy config |
+| After MVP, in order | Voice push-to-talk (Sarvam), nudges, admin overview, voice rehearsal mode, GitHub webhook sync |
 
 ## Behaviour rules
 
@@ -97,6 +97,22 @@ flowchart LR
 
 Repos are refreshed with `git fetch` when a session starts and the last sync is older than 10 minutes. Ingest skips `node_modules`, lockfiles, binaries, SQL dumps and files over 200 KB.
 
+### ClickUp
+
+Barabari already tracks projects and support tickets in ClickUp, so the integration keeps that workflow instead of replacing it. REST v2 with a personal token, switched on by `CLICKUP_ENABLED`. The official MCP server was not used: it needs OAuth and allows 50 calls a day on the free plan.
+
+| Direction | Behaviour |
+|---|---|
+| In | Each project maps to a ClickUp list. Tasks are mirrored into the tasks table, at most once a minute, when the agent's `get_tasks` tool or the project endpoint is used. The table is the fallback, so a ClickUp outage leaves the last synced data in place. |
+| Out | An escalated ticket creates a task in the "Mentor support" list with the question, what was tried and the AI's draft. Resolving the ticket adds the mentor's answer as a comment and closes the task. FYIs do not create tasks. |
+
+Two ClickUp behaviours the code accounts for:
+
+- The API rejects a status name the list does not have, and a new space only has `to do` and `complete`. Our other statuses travel as tags; `scripts.clickup_setup` turns those tags into real statuses once the space has them.
+- A date-only due date is stored as 4:00 AM in the user's timezone, so it must be read in that timezone, not in UTC.
+
+`python -m scripts.clickup_setup` creates the space and lists, pushes the seeded tasks and saves the ids in MongoDB.
+
 ### Memory hierarchy
 
 1. **Session log**: every turn, tool call, category and outcome. Append-only. Mentors can open it from a ticket.
@@ -113,7 +129,7 @@ Repos are refreshed with `git fetch` when a session starts and the last sync is 
 | tickets, FYIs | student and project memory |
 | knowledge base entries | meeting transcripts |
 | tasks (ClickUp-shaped) | raw project documents |
-| chunks with text, tsvector and embedding | repo maps |
+| chunks with text, tsvector and embedding | repo maps, ClickUp ids |
 | metrics events | |
 
 ## API

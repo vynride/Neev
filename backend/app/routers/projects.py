@@ -7,6 +7,7 @@ from app.db.mongo import MEETINGS, PROJECT_MEMORY, get_mongo
 from app.db.postgres import get_db
 from app.ingest.pipeline import sync_project_repo
 from app.ingest.repo import RepoError
+from app.integrations import clickup
 from app.models import Assignment, Project, Task, User
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
@@ -45,6 +46,7 @@ async def get_project(
     project_id: str, user: User = Depends(current_user), db: AsyncSession = Depends(get_db)
 ) -> dict:
     p = await get_project_for(user, project_id, db)
+    await clickup.sync_project_tasks(db, project_id)
     tasks = (
         (
             await db.execute(
