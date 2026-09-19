@@ -126,58 +126,58 @@ export const StudentLogin = () => {
         </div>
       </div>
 
-      {/* Right Side Visual Banner */}
+      {/* Right side: drawn in the site's own language, no stock photo */}
       <div
         style={{
           flex: '1 1 540px',
           position: 'relative',
-          background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%)',
+          background: 'var(--color-primary)',
+          color: '#FFFFFF',
           display: 'flex',
-          alignItems: 'center',
+          flexDirection: 'column',
           justifyContent: 'center',
-          padding: '48px',
+          gap: '36px',
+          padding: '56px clamp(40px, 6vw, 96px)',
           overflow: 'hidden'
         }}
-        className="hidden lg:flex"
       >
-        <img
-          src="/login.jpg"
-          alt="Two developers working through code together"
-          style={{
-            position: 'absolute',
-            inset: 0,
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            opacity: 0.35
-          }}
-        />
+        {/* The two leaves of the logo, large and faint */}
+        <svg viewBox="0 0 100 100" aria-hidden="true" style={{ position: 'absolute', right: '-12%', bottom: '-16%', width: '78%', opacity: 0.09, pointerEvents: 'none' }}>
+          <path d="M50 92 C50 78 49 68 51 56" stroke="#FFFFFF" strokeWidth="5" strokeLinecap="round" fill="none" />
+          <path d="M51 62 C24 64 9 44 9 12 C38 12 55 32 51 62 Z" fill="#FFFFFF" />
+          <path d="M51 56 C49 34 64 20 92 20 C92 44 76 58 51 56 Z" fill="#FFFFFF" />
+        </svg>
 
-        {/* Floating Handwritten Quote Card */}
-        <div
-          style={{
-            position: 'relative',
-            zIndex: 10,
-            background: 'rgba(255, 255, 255, 0.95)',
-            backdropFilter: 'blur(8px)',
-            borderRadius: 'var(--radius-xl)',
-            padding: '36px',
-            maxWidth: '440px',
-            boxShadow: 'var(--shadow-lg)',
-            border: '2px solid rgba(255, 255, 255, 0.5)'
-          }}
-        >
-          <div className="handwriting" style={{ fontSize: '1.9rem', color: 'var(--color-text-main)', lineHeight: 1.3, marginBottom: '16px' }}>
+        <div className="page-enter" style={{ position: 'relative', maxWidth: '520px' }}>
+          <div className="handwriting" style={{ fontSize: '2.5rem', lineHeight: 1.2 }}>
             “Education gives you the power to choose your own path.”
           </div>
-          <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-primary)' }}>
-            — Barabari Collective
+          <div style={{ fontSize: '0.85rem', fontWeight: 600, opacity: 0.75, marginTop: '10px' }}>Barabari Collective</div>
+        </div>
+
+        {/* A small picture of what happens inside */}
+        <div className="stagger" style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '10px', maxWidth: '520px' }}>
+          <div style={{ alignSelf: 'flex-end', maxWidth: '82%', background: 'rgba(255, 255, 255, 0.14)', border: '1px solid rgba(255, 255, 255, 0.18)', borderRadius: '16px 16px 4px 16px', padding: '10px 14px', fontSize: '0.88rem', lineHeight: 1.5 }}>
+            The client wants UPI added after we agreed the scope. What do I say?
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--color-border)' }}>
-            <ShieldCheck size={16} color="var(--color-primary)" />
-            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-              Encrypted, student-isolated workspace
-            </span>
+          <div style={{ maxWidth: '88%', background: '#FFFFFF', color: 'var(--color-text-main)', borderRadius: '16px 16px 16px 4px', padding: '12px 14px', boxShadow: 'var(--shadow-lg)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+              <img src="/logo.svg" alt="" style={{ width: '18px', height: '18px' }} />
+              <span style={{ fontSize: '0.76rem', fontWeight: 700 }}>AI Mentor</span>
+            </div>
+            <div style={{ fontSize: '0.86rem', lineHeight: 1.55 }}>
+              Your Statement of Work covers cards only, so this is a change request. Here is a message you can send her…
+            </div>
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '10px' }}>
+              {['Statement of Work', 'Kickoff call', 'checkout.js'].map((source) => (
+                <span key={source} style={{ fontSize: '0.68rem', fontWeight: 600, background: 'var(--bg-subtle)', color: 'var(--color-text-muted)', padding: '2px 8px', borderRadius: '999px' }}>
+                  {source}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', opacity: 0.8, marginTop: '4px' }}>
+            <ShieldCheck size={14} /> Answers come from your own project. A mentor steps in when the AI cannot help.
           </div>
         </div>
       </div>
