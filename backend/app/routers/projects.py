@@ -5,6 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import current_user
 from app.db.mongo import MEETINGS, PROJECT_MEMORY, get_mongo
 from app.db.postgres import get_db
+from app.ingest.pipeline import sync_project_repo
+from app.ingest.repo import RepoError
 from app.models import Assignment, Project, Task, User
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
@@ -85,3 +87,16 @@ async def get_project(
             for m in meetings
         ],
     }
+
+
+@router.post("/{project_id}/sync")
+async def sync_repo(
+    project_id: str, user: User = Depends(current_user), db: AsyncSession = Depends(get_db)
+) -> dict:
+    """Fetch the latest code and refresh the repo map for files that changed."""
+    project = await get_project_for(user, project_id, db)
+    try:
+        await sync_project_repo(db, project, force=True)
+    except RepoError as exc:
+        raise HTTPException(502, f"Could not sync the repository: {exc}") from exc
+    return {"project_id": project.id, "repo_synced_at": project.repo_synced_at.isoformat()}
