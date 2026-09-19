@@ -27,7 +27,6 @@ make dev                                # API on http://localhost:8000, docs at 
 make check    # 15 checks of the escalation flow with a fake LLM; uses the local databases only (make db)
 make smoke    # the demo path against a running server with real models
 cd backend && uv run python -m scripts.check_llm        # which OpenAI API shape works with tools
-cd backend && uv run python -m scripts.replay_meeting   # simulate a live client call
 ```
 
 Seeded logins (`POST /api/login` with `{"user_id": ...}`): students `s1`-`s5`, mentors `m1`-`m2`, admin `a1`.

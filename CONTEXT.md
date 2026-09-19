@@ -44,6 +44,5 @@ Shared vocabulary for this project. Use these terms in code, docs and conversati
 
 ## Meeting terms
 
-- **Meeting**: a client call. Has segments and a summary.
+- **Meeting**: a past client call. Its transcript and summary are project context the agent can search and cite.
 - **Segment**: one speaker turn in a meeting transcript, with a timestamp.
-- **Follow-up helper**: given a student's concern during a live meeting, returns questions to ask the client.
