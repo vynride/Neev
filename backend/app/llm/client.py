@@ -83,7 +83,14 @@ class _Base:
 
 class ResponsesClient(_Base):
     async def complete(
-        self, *, model, system, messages, tools=None, json_schema=None, effort=None,
+        self,
+        *,
+        model,
+        system,
+        messages,
+        tools=None,
+        json_schema=None,
+        effort=None,
         max_output_tokens=4000,
     ) -> LLMResult:
         items: list[dict] = []
@@ -142,7 +149,14 @@ class ResponsesClient(_Base):
 
 class ChatCompletionsClient(_Base):
     async def complete(
-        self, *, model, system, messages, tools=None, json_schema=None, effort=None,
+        self,
+        *,
+        model,
+        system,
+        messages,
+        tools=None,
+        json_schema=None,
+        effort=None,
         max_output_tokens=4000,
     ) -> LLMResult:
         chat: list[dict] = [{"role": "system", "content": system}]
@@ -174,7 +188,9 @@ class ChatCompletionsClient(_Base):
             "max_completion_tokens": max_output_tokens,
         }
         if tools:
-            kwargs["tools"] = [{"type": "function", "function": {"strict": True, **t}} for t in tools]
+            kwargs["tools"] = [
+                {"type": "function", "function": {"strict": True, **t}} for t in tools
+            ]
         if json_schema:
             kwargs["response_format"] = {
                 "type": "json_schema",
