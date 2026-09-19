@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# Blocks commits that add secrets, keys, archives, cloned repos or large files.
+# Install with `make hooks`.
+set -euo pipefail
+
+MAX_BYTES=1048576
+fail=0
+
+block() {
+  echo "pre-commit: $1" >&2
+  fail=1
+}
+
+# Only files added or changed in this commit; files already tracked and untouched are ignored.
+while IFS= read -r -d '' file; do
+  case "$file" in
+    .env.example|*/.env.example) ;;
+    .env|.env.*|*/.env|*/.env.*) block "$file: env files must not be committed" ;;
+    *.pem|*.ppk|*.key) block "$file: private key file" ;;
+    *.zip|*.tar|*.tar.gz|*.tgz) block "$file: archive" ;;
+    ssh-creds/*) block "$file: ssh-creds/ is off limits" ;;
+    data/*|*/data/repos/*) block "$file: runtime data and cloned repos stay local" ;;
+  esac
+
+  [ -f "$file" ] || continue
+
+  size=$(git cat-file -s ":$file" 2>/dev/null || echo 0)
+  if [ "$size" -gt "$MAX_BYTES" ]; then
+    block "$file: larger than 1 MB"
+  fi
+
+  # The hook itself and the env template contain the patterns below as text.
+  case "$file" in
+    scripts/pre-commit|*.env.example) continue ;;
+  esac
+
+  if git show ":$file" | grep -InE \
+    -e 'BEGIN [A-Z ]*PRIVATE KEY' \
+    -e 'sk-[A-Za-z0-9_-]{20,}' \
+    -e 'pk_[0-9]+_[A-Z0-9]{20,}' \
+    -e 'gh[opsu]_[A-Za-z0-9]{30,}' \
+    -e 'mongodb(\+srv)?://[^:/@ ]+:[^@ ]+@' \
+    -e 'postgres(ql)?(\+[a-z]+)?://[^:/@ ]+:[^@ ]+@' \
+    >/dev/null; then
+    block "$file: looks like it contains a credential"
+  fi
+done < <(git diff --cached --name-only --diff-filter=ACMR -z)
+
+if [ "$fail" -ne 0 ]; then
+  echo "pre-commit: commit blocked. Unstage the files above or remove the secret." >&2
+  exit 1
+fi
