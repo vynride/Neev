@@ -57,16 +57,16 @@ async def post_voice(
     if len(recording) > MAX_AUDIO_BYTES:
         raise HTTPException(413, "The recording is too long. Keep it under a minute or two.")
 
+    # Browsers send "audio/webm;codecs=opus"; Sarvam only accepts the bare type
+    content_type = (audio.content_type or "audio/webm").split(";")[0].strip()
     try:
         transcript, language = await sarvam.transcribe(
-            recording, audio.filename or "question.webm", audio.content_type or "audio/webm"
+            recording, audio.filename or "question.webm", content_type
         )
     except sarvam.SarvamError as exc:
         raise HTTPException(502, str(exc)) from exc
     if not transcript:
-        raise HTTPException(
-            422, "I could not hear anything. Try again, closer to the mic."
-        )
+        raise HTTPException(422, "I could not hear anything. Try again, closer to the mic.")
 
     language_name = sarvam.LANGUAGE_NAMES.get(language, "English")
     reply = await chat.ask(
