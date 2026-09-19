@@ -9,6 +9,7 @@ export const Button = ({
   disabled = false,
   onClick,
   type = 'button',
+  style = {},
   ...props
 }) => {
   let variantClass = 'btn-primary';
@@ -27,7 +28,7 @@ export const Button = ({
       type={type}
       disabled={disabled}
       onClick={onClick}
-      style={sizeStyles}
+      style={{ ...sizeStyles, ...style }}
       className={`${variantClass} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
       {...props}
     >

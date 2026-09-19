@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import current_user, require_role
 from app.db.mongo import PROJECT_MEMORY, SESSION_SUMMARIES, STUDENT_MEMORY, get_mongo
 from app.db.postgres import get_db
-from app.models import Assignment, StudentScore, User
+from app.models import Assignment, KBEntry, StudentScore, User
 from app.routers.projects import get_project_for
 from app.services import memory
 
@@ -88,3 +88,20 @@ async def get_project_memory(
             for s in summaries
         ],
     }
+
+
+@router.get("/kb")
+async def list_kb(user: User = Depends(current_user), db: AsyncSession = Depends(get_db)) -> list:
+    """Mentor-approved answers, newest first. Shown to students as a knowledge base."""
+    stmt = select(KBEntry).order_by(KBEntry.created_at.desc()).limit(100)
+    return [
+        {
+            "id": e.id,
+            "category": e.category,
+            "question": e.question,
+            "answer": e.answer,
+            "from_ticket": e.source_ticket_id is not None,
+            "created_at": e.created_at.isoformat(),
+        }
+        for e in (await db.execute(stmt)).scalars()
+    ]

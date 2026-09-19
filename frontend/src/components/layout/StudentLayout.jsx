@@ -13,13 +13,14 @@ export const StudentLayout = () => {
   const primaryNavItems = [
     { label: 'Dashboard', path: '/student/dashboard' },
     { label: 'Ask Mentor', path: '/student/mentor' },
-    { label: 'Requirements', path: '/student/requirements' },
+    { label: 'Knowledge', path: '/student/knowledge' },
   ];
 
   // Dropdown items under Project Workspace (Tasks, Progress)
   const workspaceDropdownItems = [
     { label: 'Tasks', path: '/student/project?tab=tasks' },
-    { label: 'Progress', path: '/student/project?tab=overview' }
+    { label: 'Progress', path: '/student/project?tab=overview' },
+    { label: 'Client Calls', path: '/student/project?tab=calls' }
   ];
 
   const isWorkspaceActive = location.pathname === '/student/project';

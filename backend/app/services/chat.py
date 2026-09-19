@@ -71,9 +71,10 @@ async def _escalate(
     tried: str,
     draft_answer: str,
     excerpts: list[dict],
+    skip_kb: bool = False,
 ) -> dict:
     """Reuse a past mentor answer if one is close enough, otherwise open a ticket."""
-    match = await escalation.find_kb_match(db, question)
+    match = None if skip_kb else await escalation.find_kb_match(db, question)
     if match:
         await escalation.record(db, "kb_hit", project.id, student.id)
         turn = await sessions.append_turn(
@@ -85,6 +86,7 @@ async def _escalate(
                 "attempt": 3,
                 "category": category,
                 "next_action": "answered",
+                "from_kb": True,
                 "resolved": None,
             },
         )
@@ -217,6 +219,8 @@ async def feedback(
         (t for t in session["turns"] if t.get("question") == question and t.get("attempt") == 1),
         None,
     )
+    # A reused mentor answer that did not help must not be offered again: go to the mentor
+    from_kb = bool(turn.get("from_kb"))
     tried = "The AI mentor answered twice and the student marked both as not resolving it."
     if first:
         tried += f"\n\nFirst attempt:\n{first['content'][:1200]}"
@@ -231,4 +235,5 @@ async def feedback(
         tried=tried,
         draft_answer=turn["content"],
         excerpts=turn.get("excerpts", []),
+        skip_kb=from_kb,
     )

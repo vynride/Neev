@@ -29,13 +29,14 @@ async def get_project_for(user: User, project_id: str, db: AsyncSession) -> Proj
     return project
 
 
-def task_out(t: Task) -> dict:
+def task_out(t: Task, names: dict[str, str] | None = None) -> dict:
     return {
         "id": t.id,
         "name": t.name,
         "description": t.description,
         "status": t.status,
         "assignee_id": t.assignee_id,
+        "assignee_name": (names or {}).get(t.assignee_id),
         "due_date": t.due_date.isoformat() if t.due_date else None,
         "priority": t.priority,
     }
@@ -57,6 +58,15 @@ async def get_project(
         .all()
     )
 
+    assignments = (
+        (await db.execute(select(Assignment).where(Assignment.project_id == project_id)))
+        .scalars()
+        .all()
+    )
+    member_ids = {a.student_id for a in assignments} | {a.mentor_id for a in assignments}
+    members = (await db.execute(select(User).where(User.id.in_(member_ids)))).scalars().all()
+    names = {u.id: u.name for u in members}
+
     mongo = get_mongo()
     memory = await mongo[PROJECT_MEMORY].find_one({"_id": project_id}) or {}
     meetings = (
@@ -77,7 +87,11 @@ async def get_project(
         "start_date": p.start_date.isoformat() if p.start_date else None,
         "deadline": p.deadline.isoformat() if p.deadline else None,
         "card": memory.get("card", ""),
-        "tasks": [task_out(t) for t in tasks],
+        "team": [
+            {"id": u.id, "name": u.name, "role": u.role}
+            for u in sorted(members, key=lambda u: (u.role, u.id))
+        ],
+        "tasks": [task_out(t, names) for t in tasks],
         "meetings": [
             {
                 "id": m["_id"],

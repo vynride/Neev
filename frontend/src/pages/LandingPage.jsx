@@ -92,7 +92,7 @@ export const LandingPage = () => {
               <Button onClick={() => navigate('/login')} variant="primary" size="lg">
                 Get Started <ArrowRight size={18} />
               </Button>
-              <Button onClick={() => navigate('/student/dashboard')} variant="outline" size="lg">
+              <Button onClick={() => navigate('/login')} variant="outline" size="lg">
                 Explore Demo
               </Button>
             </div>

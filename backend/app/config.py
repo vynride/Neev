@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     clickup_enabled: bool = False
     sarvam_api_key: str = ""
 
-    cors_origins: str = "http://localhost:5173"
+    cors_origins: str = "http://localhost:3000,http://localhost:5173"
     auth_secret: str = "change-me"
     repos_dir: str = "./data/repos"
 

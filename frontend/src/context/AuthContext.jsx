@@ -1,61 +1,42 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { mockStudent } from '../data/mockData';
+import React, { createContext, useContext, useState, useCallback } from 'react';
+import { apiClient, TOKEN_KEY, USER_KEY } from '../services/apiClient';
 
 const AuthContext = createContext(null);
 
+const readSavedUser = () => {
+  try {
+    const saved = localStorage.getItem(USER_KEY);
+    return saved && localStorage.getItem(TOKEN_KEY) ? JSON.parse(saved) : null;
+  } catch {
+    return null;
+  }
+};
+
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem('saathi_student_user');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return mockStudent;
-      }
-    }
-    // Default authenticated with Aditi for hackathon judging convenience
-    return mockStudent;
-  });
+  const [user, setUser] = useState(readSavedUser);
 
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return !!localStorage.getItem('saathi_student_user') || true;
-  });
+  // The backend has seeded users and no passwords: logging in means picking one
+  const login = useCallback(async (userId) => {
+    const res = await apiClient.post('/api/login', { user_id: userId });
+    localStorage.setItem(TOKEN_KEY, res.data.token);
+    const me = (await apiClient.get('/api/me')).data;
+    localStorage.setItem(USER_KEY, JSON.stringify(me));
+    setUser(me);
+    return me;
+  }, []);
 
-  useEffect(() => {
-    if (user) {
-      localStorage.setItem('saathi_student_user', JSON.stringify(user));
-      setIsAuthenticated(true);
-    } else {
-      localStorage.removeItem('saathi_student_user');
-      localStorage.removeItem('saathi_auth_token');
-      setIsAuthenticated(false);
-    }
-  }, [user]);
-
-  const login = (email, password) => {
-    // In hackathon dev mode, match student credentials or mock student
-    const studentUser = {
-      ...mockStudent,
-      email: email || mockStudent.email
-    };
-    localStorage.setItem('saathi_auth_token', 'mock_jwt_token_for_aditi');
-    setUser(studentUser);
-    return true;
-  };
-
-  const logout = () => {
+  const logout = useCallback(() => {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
     setUser(null);
-    setIsAuthenticated(false);
-  };
+  }, []);
 
-  const demoLogin = () => {
-    localStorage.setItem('saathi_auth_token', 'mock_jwt_token_for_aditi');
-    setUser(mockStudent);
-    return true;
-  };
+  const project = user?.projects?.[0] || null;
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, login, logout, demoLogin }}>
+    <AuthContext.Provider
+      value={{ user, project, projectId: project?.id || null, isAuthenticated: !!user, login, logout }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -68,3 +49,5 @@ export const useAuth = () => {
   }
   return context;
 };
+
+export const homeFor = (user) => (user?.role === 'student' ? '/student/dashboard' : '/mentor');

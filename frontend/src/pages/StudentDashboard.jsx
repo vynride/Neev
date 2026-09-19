@@ -16,27 +16,35 @@ import {
 import { Card, Badge } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { studentService } from '../services/studentService';
+import { projectService } from '../services/projectService';
+import { errorMessage } from '../services/apiClient';
+import { formatDate } from '../services/format';
 import { useAuth } from '../context/AuthContext';
 
 export const StudentDashboard = () => {
-  const { user } = useAuth();
+  const { user, projectId } = useAuth();
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
-        const res = await studentService.getDashboard();
-        setData(res);
+        const [project, profile] = await Promise.all([
+          projectService.getProject(projectId),
+          studentService.getProfile(user.id)
+        ]);
+        setData({ project, profile });
       } catch (err) {
-        console.error('Error loading dashboard', err);
+        setError(errorMessage(err));
       } finally {
         setLoading(false);
       }
     };
-    fetchDashboard();
-  }, []);
+    if (projectId) fetchDashboard();
+    else setLoading(false);
+  }, [projectId, user.id]);
 
   if (loading) {
     return (
@@ -50,7 +58,28 @@ export const StudentDashboard = () => {
     );
   }
 
-  const { project, stats, strengths, focusAreas, quickActions } = data;
+  if (error) return <div className="notice-error">{error}</div>;
+  if (!data) {
+    return <div className="notice-error">You are not assigned to a project yet. Ask your programme coordinator.</div>;
+  }
+
+  const { project, profile } = data;
+  const { strengths, focusAreas } = profile;
+  const myTasks = project.tasks.filter((t) => t.assignee_id === user.id && t.status !== 'done');
+  const stats = {
+    totalTasks: project.metrics.total,
+    completed: project.metrics.completed,
+    overdue: project.metrics.overdue,
+    inReview: project.metrics.inReview
+  };
+  const quickActions = [
+    { id: 'ask', label: 'Ask the AI mentor', path: '/student/mentor' },
+    { id: 'tasks', label: `My open tasks (${myTasks.length})`, path: '/student/project?tab=tasks' },
+    { id: 'calls', label: 'Client call notes', path: '/student/project?tab=calls' },
+    { id: 'kb', label: 'Answers from mentors', path: '/student/knowledge' }
+  ];
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
   const handleQuickAction = (action) => {
     if (action.path) {
@@ -64,7 +93,7 @@ export const StudentDashboard = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text-main)', letterSpacing: '-0.02em' }}>
-            Good evening, {user?.name || 'Aditi'}!
+            {greeting}, {user.name.split(' ')[0]}!
           </h1>
           <p style={{ fontSize: '0.92rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
             Keep going. Small steps make big progress.
@@ -92,7 +121,7 @@ export const StudentDashboard = () => {
                   {project.name}
                 </h3>
                 <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
-                  Client: <strong style={{ color: 'var(--color-text-main)' }}>{project.client}</strong>
+                  Client: <strong style={{ color: 'var(--color-text-main)' }}>{project.client_name}</strong>
                 </p>
               </div>
               <Badge variant="green">{project.stage}</Badge>
@@ -101,7 +130,7 @@ export const StudentDashboard = () => {
             {/* Progress Section */}
             <div style={{ marginTop: '18px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '8px' }}>
-                <span style={{ fontWeight: 600, color: 'var(--color-text-muted)' }}>Sprint Completion</span>
+                <span style={{ fontWeight: 600, color: 'var(--color-text-muted)' }}>Tasks Completed</span>
                 <span style={{ fontWeight: 800, color: 'var(--color-primary)' }}>{project.progress}%</span>
               </div>
               <div style={{ width: '100%', height: '8px', background: '#E2E8F0', borderRadius: '999px', overflow: 'hidden' }}>
@@ -130,7 +159,7 @@ export const StudentDashboard = () => {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-muted)' }}>
-                <span>Deadline: <strong style={{ color: 'var(--color-text-main)' }}>{project.deadline}</strong></span>
+                <span>Deadline: <strong style={{ color: 'var(--color-text-main)' }}>{formatDate(project.deadline)}</strong></span>
               </div>
 
               <button
@@ -171,19 +200,19 @@ export const StudentDashboard = () => {
 
             <Card style={{ padding: '16px 20px', textAlign: 'center' }}>
               <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--color-accent)' }}>
-                {stats.openIssues}
+                {stats.overdue}
               </div>
               <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', fontWeight: 600, marginTop: '2px' }}>
-                Open Issues
+                Overdue
               </div>
             </Card>
 
             <Card style={{ padding: '16px 20px', textAlign: 'center' }}>
               <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#0284C7' }}>
-                {stats.pendingReviews ?? stats.upcomingMeetings ?? 2}
+                {stats.inReview}
               </div>
               <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', fontWeight: 600, marginTop: '2px' }}>
-                Pending Reviews
+                In Review
               </div>
             </Card>
           </div>
@@ -245,6 +274,7 @@ export const StudentDashboard = () => {
                 Your Strengths
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {strengths.length === 0 && <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>No scores yet</span>}
                 {strengths.map((str) => (
                   <span
                     key={str}

@@ -190,3 +190,33 @@ button {
 .btn-terracotta:hover {
   background: var(--color-accent-hover);
 }
+
+/* Markdown from the AI mentor */
+.md { font-size: 0.92rem; line-height: 1.65; overflow-wrap: anywhere; }
+.md > * + * { margin-top: 10px; }
+.md h1, .md h2, .md h3, .md h4 { font-size: 1rem; font-weight: 800; margin-top: 16px; }
+.md ul, .md ol { padding-left: 22px; display: flex; flex-direction: column; gap: 4px; }
+.md a { color: var(--color-primary); font-weight: 600; text-decoration: underline; }
+.md code {
+  background: #F1F5F9; padding: 1px 5px; border-radius: 4px; font-size: 0.85em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.md pre {
+  background: #0F172A; color: #E2E8F0; padding: 12px 14px; border-radius: var(--radius-md);
+  overflow-x: auto; font-size: 0.82rem;
+}
+.md pre code { background: transparent; padding: 0; color: inherit; }
+.md blockquote { border-left: 3px solid var(--color-primary-border); padding-left: 12px; color: var(--color-text-muted); }
+.md table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+.md th, .md td { border: 1px solid var(--color-border); padding: 6px 10px; text-align: left; }
+.md th { background: #F8FAFC; }
+
+.notice-error {
+  background: #FEF2F2; border: 1px solid #FECACA; color: #991B1B;
+  padding: 12px 16px; border-radius: var(--radius-md); font-size: 0.88rem;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse { 50% { opacity: 0.5; } }
+@keyframes ping { 75%, 100% { transform: scale(1.8); opacity: 0; } }
+.animate-spin { animation: spin 1s linear infinite; }

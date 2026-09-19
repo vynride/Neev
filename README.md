@@ -40,5 +40,18 @@ Seeded logins (`POST /api/login` with `{"user_id": ...}`): students `s1`-`s5`, m
   - `app/services/`: escalation sequence, tickets and knowledge base, sessions, memory
   - `app/routers/`: HTTP API
   - `seed_data/`: synthetic projects, students and mentor answers
-- `frontend/`: React app (separate team)
+- `frontend/`: React app, wired to the API. Students get `/student`, mentors and admins get `/mentor`.
 - `scripts/`: git hooks
+
+## Running the whole app
+
+Two terminals:
+
+```
+make dev                                  # API on http://localhost:8000
+cd frontend && npm install && npm run dev # app on http://localhost:3000
+```
+
+The frontend proxies `/api` to the backend, so there is nothing to configure. Log in by picking a
+seeded account: a student (`s1`-`s5`) opens the student app, a mentor (`m1`, `m2`) opens the mentor
+desk. To see an escalation end to end, keep a student and a mentor open in two browser profiles.
