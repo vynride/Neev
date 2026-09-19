@@ -1,0 +1,133 @@
+[
+  {
+    "id": "s1",
+    "name": "Ananya Pawar",
+    "email": "ananya.pawar@example.com",
+    "role": "student",
+    "scores": {
+      "codeguru": {
+        "domains": {"frontend": 86, "backend": 58, "database": 52, "devops": 28, "git": 66},
+        "weekly_avg": 71,
+        "monthly_avg": 67,
+        "capstone": 78,
+        "attendance_pct": 93,
+        "daily_activity_pct": 81,
+        "portfolio_complete": true
+      },
+      "samvad_saathi": {
+        "knowledge": {"fullstack": 62, "product_design": 74},
+        "speech": {"fluency": 41, "pronunciation": 48, "clarity": 39},
+        "interviews_taken": 3
+      }
+    }
+  },
+  {
+    "id": "s2",
+    "name": "Rukhsar Shaikh",
+    "email": "rukhsar.shaikh@example.com",
+    "role": "student",
+    "scores": {
+      "codeguru": {
+        "domains": {"frontend": 44, "backend": 84, "database": 76, "devops": 55, "git": 72},
+        "weekly_avg": 74,
+        "monthly_avg": 70,
+        "capstone": 81,
+        "attendance_pct": 90,
+        "daily_activity_pct": 77,
+        "portfolio_complete": true
+      },
+      "samvad_saathi": {
+        "knowledge": {"fullstack": 71, "product_design": 38},
+        "speech": {"fluency": 60, "pronunciation": 57, "clarity": 63},
+        "interviews_taken": 5
+      }
+    }
+  },
+  {
+    "id": "s3",
+    "name": "Meenakshi Iyer",
+    "email": "meenakshi.iyer@example.com",
+    "role": "student",
+    "scores": {
+      "codeguru": {
+        "domains": {"frontend": 68, "backend": 57, "database": 33, "devops": 46, "git": 61},
+        "weekly_avg": 60,
+        "monthly_avg": 58,
+        "capstone": 64,
+        "attendance_pct": 96,
+        "daily_activity_pct": 70,
+        "portfolio_complete": true
+      },
+      "samvad_saathi": {
+        "knowledge": {"fullstack": 59, "product_design": 72},
+        "speech": {"fluency": 88, "pronunciation": 82, "clarity": 90},
+        "interviews_taken": 9
+      }
+    }
+  },
+  {
+    "id": "s4",
+    "name": "Pooja Kumari",
+    "email": "pooja.kumari@example.com",
+    "role": "student",
+    "scores": {
+      "codeguru": {
+        "domains": {"frontend": 55, "backend": 61, "database": 58, "devops": 79, "git": 85},
+        "weekly_avg": 57,
+        "monthly_avg": 62,
+        "capstone": 66,
+        "attendance_pct": 68,
+        "daily_activity_pct": 49,
+        "portfolio_complete": false
+      },
+      "samvad_saathi": {
+        "knowledge": {"fullstack": 56, "product_design": 42},
+        "speech": {"fluency": 64, "pronunciation": 69, "clarity": 61},
+        "interviews_taken": 2
+      }
+    }
+  },
+  {
+    "id": "s5",
+    "name": "Lakshmi Gowda",
+    "email": "lakshmi.gowda@example.com",
+    "role": "student",
+    "scores": {
+      "codeguru": {
+        "domains": {"frontend": 63, "backend": 75, "database": 89, "devops": 51, "git": 47},
+        "weekly_avg": 76,
+        "monthly_avg": 73,
+        "capstone": 84,
+        "attendance_pct": 85,
+        "daily_activity_pct": 88,
+        "portfolio_complete": true
+      },
+      "samvad_saathi": {
+        "knowledge": {"fullstack": 77, "product_design": 49},
+        "speech": {"fluency": 52, "pronunciation": 66, "clarity": 58},
+        "interviews_taken": 4
+      }
+    }
+  },
+  {
+    "id": "m1",
+    "name": "Sunita Deshmukh",
+    "email": "sunita.deshmukh@example.com",
+    "role": "mentor",
+    "scores": null
+  },
+  {
+    "id": "m2",
+    "name": "Farhan Qureshi",
+    "email": "farhan.qureshi@example.com",
+    "role": "mentor",
+    "scores": null
+  },
+  {
+    "id": "a1",
+    "name": "Kavita Nair",
+    "email": "kavita.nair@example.com",
+    "role": "admin",
+    "scores": null
+  }
+]

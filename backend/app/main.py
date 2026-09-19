@@ -7,6 +7,7 @@ from sqlalchemy import text
 from app.config import get_settings
 from app.db.mongo import get_mongo, init_mongo
 from app.db.postgres import engine, init_postgres
+from app.routers import auth, projects
 
 
 @asynccontextmanager
@@ -26,6 +27,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+app.include_router(auth.router)
+app.include_router(projects.router)
 
 
 @app.get("/api/health")
