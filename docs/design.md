@@ -19,8 +19,8 @@ The React frontend is built by another team against the API below.
 
 | Phase | Features |
 |---|---|
-| MVP | Grounded chat, category routing, escalation sequence, mentor tickets with draft answers, knowledge base, meeting follow-up helper, memory, embeddings, EC2 deploy |
-| After MVP, in order | Voice push-to-talk (Sarvam), nudges, ClickUp over REST, admin overview, Meet caption extension, voice rehearsal mode, GitHub webhook sync |
+| MVP | Grounded chat, category routing, escalation sequence, mentor tickets with draft answers, knowledge base, memory, embeddings, EC2 deploy |
+| After MVP, in order | Voice push-to-talk (Sarvam), nudges, ClickUp over REST, admin overview, voice rehearsal mode, GitHub webhook sync |
 
 ## Behaviour rules
 
@@ -80,7 +80,7 @@ flowchart LR
 ```
 
 - **LLM access** goes through an `LLMClient` interface with two implementations: Responses API and Chat Completions. `LLM_API` selects one. `temperature` is never sent. Output limits use the parameter each API expects.
-- **Models**: `MODEL_FAST` classifies and summarises. `MODEL_STRONG` answers, retries and writes project cards. Both currently run on `gpt-5.6-luna`, the only GPT-5.6 deployment on the Azure resource.
+- **Models**: `MODEL_FAST` classifies and summarises. `MODEL_STRONG` answers, retries and writes project cards. `gpt-5.6-luna` is the fast model and `gpt-5.6-terra` the strong one, both Azure OpenAI deployments.
 - **API shape**: Responses API, settled by test. Chat Completions rejects tools combined with reasoning on these models.
 - **Latency**: the knowledge base and document searches run while the classifier runs, and the repo map is in the prompt, so most answers need one tool round or none.
 
@@ -111,7 +111,7 @@ Repos are refreshed with `git fetch` when a session starts and the last sync is 
 | users, projects, assignments | session logs |
 | student scores | session summaries |
 | tickets, FYIs | student and project memory |
-| knowledge base entries | meeting transcripts and segments |
+| knowledge base entries | meeting transcripts |
 | tasks (ClickUp-shaped) | raw project documents |
 | chunks with text, tsvector and embedding | repo maps |
 | metrics events | |
@@ -131,8 +131,6 @@ All routes are under `/api`. Auth is a bearer token from `/api/login`. Roles: `s
 | GET | `/sessions/{id}` | student, mentor | Session log |
 | GET | `/students/{id}/memory` | student, mentor | Student memory as markdown |
 | PUT | `/students/{id}/memory` | mentor | Edit student memory |
-| POST | `/meetings/{id}/segments` | any | Append live transcript lines |
-| POST | `/meetings/{id}/followups` | student | `{concern}` returns questions to ask the client |
 | GET | `/mentor/tickets` | mentor | Open tickets and FYIs |
 | GET | `/mentor/tickets/{id}` | mentor | Ticket with context, draft and chat |
 | POST | `/mentor/tickets/{id}/resolve` | mentor | `{answer}` sends it and writes the knowledge base entry |
@@ -141,7 +139,7 @@ All routes are under `/api`. Auth is a bearer token from `/api/login`. Roles: `s
 ### Chat request and response
 
 ```json
-{ "project_id": "p1", "session_id": null, "message": "How do I ...", "meeting_id": null }
+{ "project_id": "p1", "session_id": null, "message": "How do I ..." }
 ```
 
 ```json

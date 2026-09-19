@@ -17,7 +17,6 @@ AMBIGUOUS_Q = (
     "The client wants a modern dashboard with analytics. Which metrics should I build first?"
 )
 LEARN_Q = "I have no idea how Stripe webhooks work. How should I approach adding one here?"
-MEETING_CONCERN = "She said checkout should feel more trustworthy. I do not know what to build."
 
 
 def show(title: str, r: dict) -> None:
@@ -95,21 +94,6 @@ def main() -> None:
             )
             need(r.status_code == 200 and r.json()["kb_entry_id"], "resolve failed")
             print(f"Resolved. KB entry {r.json()['kb_entry_id']}")
-
-        meetings = c.get("/projects/p1", headers=student).json()["meetings"]
-        live = next((m for m in meetings if m["status"] == "live"), None)
-        if live:
-            f = c.post(
-                f"/meetings/{live['id']}/followups",
-                headers=student,
-                json={"concern": MEETING_CONCERN},
-            )
-            need(f.status_code == 200, f"followups returned {f.status_code}")
-            print("\n=== In-meeting follow-ups")
-            for q in f.json()["questions"]:
-                print(f"  ask: {q['question']}")
-        else:
-            print("\n(no live meeting; run scripts.replay_meeting to test follow-ups)")
 
         print("\n=== Metrics")
         print(c.get("/mentor/metrics", headers=mentor).json())

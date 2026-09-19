@@ -10,7 +10,7 @@ Decisions and their reasons are in [`design.md`](design.md). Terms are in [`CONT
 | Escalation logic | 15 of 15 checks pass (`make check`, fake model, local databases) |
 | Real-model demo path | Passes (`make smoke`) against Azure OpenAI, Supabase, Atlas and Exa |
 | Deployment to EC2 | Config written, not deployed |
-| Pull requests | 11 open, stacked, none merged |
+| Pull requests | 12 open, stacked, none merged |
 
 ## Step 1: Guardrails before any code (PR #1)
 
@@ -63,11 +63,12 @@ Decisions and their reasons are in [`design.md`](design.md). Terms are in [`CONT
 - `scripts/flow_check.py`: the whole sequence with a scripted fake model.
 - **Found by the check:** a resolved ticket's knowledge base entry had no embedding unless an API key was configured, and knowledge base search did not fall back to keywords when vector search returned nothing. Both fixed; the fix is its own commit by the owner of that code.
 
-## Step 8: Meeting transcripts and follow-up helper (PR #8)
+## Step 8: Meeting follow-up helper (PR #8), later removed
 
-- Live speaker turns are appended through `POST /api/meetings/{id}/segments`. The follow-up helper makes one model call with no tool loop, because she needs the answer while the client is still talking.
-- `scripts/replay_meeting.py` replays a seeded transcript to simulate a live call.
-- **Open decision:** whether this feature stays in the product. It is out of the architecture diagram.
+- Built: live transcript ingestion, an in-meeting helper that suggested questions for the client, and a replay script.
+- **Removed** in a later PR by decision: it was judged to be bloat next to the core mentoring flow. The router, replay script and live transcript seed file are gone.
+- Kept: transcripts of past client calls. They are project context the agent searches and cites.
+- Kept from that PR: ingest no longer fails when an embedding call fails; chunks are stored without vectors and stay findable by keyword.
 
 ## Step 9: Memory (PR #9)
 
@@ -103,7 +104,7 @@ So `LLM_API=responses`. The Chat Completions client remains for other compatible
 
 ### Models
 
-The Azure resource has deployments for `gpt-5.6-luna`, `gpt-4.1` and `gpt-4o`. There is no `gpt-5.6-terra`. Both roles run on luna. To switch later, change `MODEL_STRONG` in `.env`; nothing else.
+At first the Azure resource had `gpt-5.6-luna`, `gpt-4.1` and `gpt-4o` but no `gpt-5.6-terra`, so both roles ran on luna. Terra was deployed later and passed the same tool-calling check (works on Responses, fails on Chat Completions). `MODEL_STRONG` is now `gpt-5.6-terra`; that one line in `.env` was the whole change.
 
 ### Ingest
 
@@ -117,7 +118,6 @@ All three projects in 3 min 20 s: 69 chunks embedded, 3 project cards, 235 files
 | Client wants a "modern dashboard with analytics". Which metrics first? | `ask_client`. Cited the brief, the meeting and two tasks, and drafted a WhatsApp message offering options |
 | I have no idea how Stripe webhooks work | Found the actual defect in the repo (orders are created only when the success page loads), tied it to the client's complaint in meeting 2, drew a mermaid flow, gave 3 Stripe doc links from Exa |
 | Not resolved, twice | Retry took a different approach, then a ticket with a 6,116-character draft; mentor approved; knowledge base entry written |
-| In-meeting concern about "more trustworthy checkout" | 3 option-style questions for the client |
 
 Metrics after the run: 3 questions, 1 escalated, deflection 0.667, 1 redirected to client, 1 FYI.
 
