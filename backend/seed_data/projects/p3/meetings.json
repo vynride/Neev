@@ -1,0 +1,63 @@
+[
+  {
+    "id": "p3-m1",
+    "title": "Kickoff call",
+    "started_at": "2026-08-12T10:00:00+05:30",
+    "status": "ended",
+    "summary": "Sameer described how Northgate Events tracks event work on WhatsApp and a spreadsheet and misses tasks close to events. Decisions: each event is a project with a three-column board (To do, In progress, Done), access is single-admin with Sameer creating all staff accounts and every staff user seeing everything, the default theme is dark with a teal accent, and the AI features in the base code will be switched off. Go-live is fixed at 28 September because bookings open on 1 October. Open item: Sameer has to choose an email provider and send the API key for reminder emails.",
+    "segments": [
+      {"t": "00:00:15", "speaker": "Mentor (Sunita)", "text": "Good morning Sameer. Lakshmi is the main developer on this project and Pooja will handle deployment. I am the mentor."},
+      {"t": "00:00:30", "speaker": "Client (Sameer)", "text": "Morning. I have twenty minutes, I am at a venue recce, so let us be quick."},
+      {"t": "00:00:45", "speaker": "Student (Lakshmi)", "text": "Sure sir. Can you tell us how your team tracks work for an event today?"},
+      {"t": "00:00:58", "speaker": "Client (Sameer)", "text": "Badly. Every wedding has a WhatsApp group and one big Excel sheet. Florist, caterer, lights, guest travel, everything. Three days before the event somebody realises the generator was never booked. That is what I want to stop."},
+      {"t": "00:01:35", "speaker": "Student (Lakshmi)", "text": "So each event will be one project, and inside it there will be tasks with a person and a due date. Is that right?"},
+      {"t": "00:01:48", "speaker": "Client (Sameer)", "text": "Correct. And I want that board thing, cards you drag. To do, doing, done. Keep it to three columns, my team will get confused with more."},
+      {"t": "00:02:10", "speaker": "Student (Lakshmi)", "text": "Okay, three columns: To do, In progress, Done. Who all will use it, sir?"},
+      {"t": "00:02:22", "speaker": "Client (Sameer)", "text": "Fourteen people. All my own staff. No clients, no vendors."},
+      {"t": "00:02:35", "speaker": "Mentor (Sunita)", "text": "For access, the simplest approach is one admin, you, who creates accounts for the staff. Everyone who logs in can see and edit all projects. Does that work?"},
+      {"t": "00:02:55", "speaker": "Client (Sameer)", "text": "Yes. Keep it simple. I am the admin, I add people, everyone sees everything. We are a small team, nothing to hide."},
+      {"t": "00:03:15", "speaker": "Student (Lakshmi)", "text": "Noted sir. Single admin. I will write it in the scope document."},
+      {"t": "00:03:28", "speaker": "Client (Sameer)", "text": "Also reminders. People should get an email when a task is given to them and when it is about to be late."},
+      {"t": "00:03:45", "speaker": "Student (Pooja)", "text": "For emails we need an email sending service, sir. The account should be in your company's name, and you share an API key with us. It is like a password for sending mail."},
+      {"t": "00:04:08", "speaker": "Client (Sameer)", "text": "Okay. Send me what to sign up for, I will get my accountant to do it. Give me some days."},
+      {"t": "00:04:25", "speaker": "Student (Lakshmi)", "text": "The base code also has an AI chat assistant and AI insights. Do you need those?"},
+      {"t": "00:04:36", "speaker": "Client (Sameer)", "text": "No no. Switch it off. My team will start asking it wedding jokes."},
+      {"t": "00:04:50", "speaker": "Student (Lakshmi)", "text": "Okay. And any colour preference?"},
+      {"t": "00:05:00", "speaker": "Client (Sameer)", "text": "Dark screen please, bright white hurts my eyes at night. Our logo is teal, use that."},
+      {"t": "00:05:18", "speaker": "Mentor (Sunita)", "text": "On the date. You mentioned 1 October."},
+      {"t": "00:05:26", "speaker": "Client (Sameer)", "text": "Bookings for the season open 1 October. I need the team on this tool from 28 September, that Monday. After that I will have no time to train anybody. That date is fixed."},
+      {"t": "00:05:50", "speaker": "Mentor (Sunita)", "text": "Understood. 28 September go-live, first demo on 28 August. It is a tight plan, so quick replies from your side will matter."},
+      {"t": "00:06:05", "speaker": "Client (Sameer)", "text": "WhatsApp me, voice notes are best. I have to run now. Thanks."}
+    ]
+  },
+  {
+    "id": "p3-m2",
+    "title": "Progress update",
+    "started_at": "2026-09-04T17:00:00+05:30",
+    "status": "ended",
+    "summary": "Lakshmi demoed boards, tasks, the dashboard and the timeline view, and Sameer accepted them. Decisions: overdue tasks will show a red label on the card, and reminder emails will go out at 9 am every day. The email provider API key, requested on 31 August, had still not been sent; Sameer promised it by the next day, and the team said the email work is blocked until then. Near the end Sameer casually asked for Admin, Editor and Viewer roles so that interns cannot edit and managers can; this is outside the agreed single-admin scope and nobody on the call confirmed or declined it. He also repeated that 28 September cannot move.",
+    "segments": [
+      {"t": "00:00:12", "speaker": "Student (Lakshmi)", "text": "Good evening sir. I will show the boards, dashboard and timeline today."},
+      {"t": "00:00:25", "speaker": "Client (Sameer)", "text": "Go ahead. I am in the car, so I am looking on the phone."},
+      {"t": "00:00:40", "speaker": "Student (Lakshmi)", "text": "This is the project list. I made one sample, Mehra wedding Udaipur. Inside, the board has three columns. I can drag this card, Book generator, from To do to In progress."},
+      {"t": "00:01:15", "speaker": "Client (Sameer)", "text": "Ha, you remembered the generator. Good. This is exactly what I wanted. Can late tasks look different? They should jump out."},
+      {"t": "00:01:35", "speaker": "Student (Lakshmi)", "text": "Yes sir. I can put a red Overdue label on the card when the due date has passed."},
+      {"t": "00:01:48", "speaker": "Client (Sameer)", "text": "Do that. Red label. Fine."},
+      {"t": "00:02:05", "speaker": "Student (Lakshmi)", "text": "The dashboard shows open, overdue and completed tasks, and the timeline shows tasks by date for each project."},
+      {"t": "00:02:25", "speaker": "Client (Sameer)", "text": "Good, good. I accept this part. Tell Sunita to send the invoice."},
+      {"t": "00:02:40", "speaker": "Student (Pooja)", "text": "Sir, one blocker. We asked for the email service API key on 31 August. We have not received it yet. Without it we cannot build or test the reminder emails."},
+      {"t": "00:03:00", "speaker": "Client (Sameer)", "text": "Yes yes, my fault. We had the Jaipur event, total madness. The accountant has made the account, I just have to forward it. I will send tomorrow, pakka."},
+      {"t": "00:03:20", "speaker": "Mentor (Sunita)", "text": "Thank you. Just so it is clear, the email milestone was 11 September and each day of waiting eats into that. We will tell you in writing if it affects the 28th."},
+      {"t": "00:03:40", "speaker": "Client (Sameer)", "text": "No, no, 28th cannot move. I told you, season opens on 1st. You manage somehow, you people are smart."},
+      {"t": "00:03:58", "speaker": "Student (Lakshmi)", "text": "Sir, at what time should the reminder emails go?"},
+      {"t": "00:04:08", "speaker": "Client (Sameer)", "text": "Morning nine o'clock. Everyone checks mail with chai. One mail for tasks due tomorrow, one for late tasks."},
+      {"t": "00:04:28", "speaker": "Student (Lakshmi)", "text": "Okay, 9 am daily."},
+      {"t": "00:04:40", "speaker": "Client (Sameer)", "text": "Oh, and one small thing. I was thinking, we have interns joining for the season. I don't want them changing things. So just add roles, no? Admin, Editor, Viewer. Managers are editors, interns are viewers. Should be simple, there is already a user page."},
+      {"t": "00:05:10", "speaker": "Student (Lakshmi)", "text": "Sir, currently there is admin and member only. Viewer means they can see all projects but not edit anything?"},
+      {"t": "00:05:24", "speaker": "Client (Sameer)", "text": "Something like that. Or maybe they edit only their own tasks. And maybe some weddings the interns should not see at all, the VIP ones. I have not thought it fully. You figure out what is sensible."},
+      {"t": "00:05:50", "speaker": "Student (Lakshmi)", "text": "Okay sir, I will see."},
+      {"t": "00:06:00", "speaker": "Mentor (Sunita)", "text": "Sameer, we have noted the request. Let us come back to you on it separately."},
+      {"t": "00:06:12", "speaker": "Client (Sameer)", "text": "Sure, sure. It is a small thing only. I have to drop now, reaching the venue. Good work, both of you."}
+    ]
+  }
+]

@@ -1,0 +1,38 @@
+[
+  {
+    "id": "kb1",
+    "category": "requirements_communication",
+    "question": "The client says they want the page to 'look more professional' but cannot tell me what that means. What should I ask?",
+    "answer": "When a client uses a feeling word, do not guess and do not start changing code. First find out what they saw. Ask which page, on which device, and what they expected instead. Then give them something to react to, because non-technical clients find it easier to choose than to describe. Show two or three reference sites or two quick versions and ask which is closer. Repeat back what you understood in one simple sentence and get a yes in writing. Also ask what would make them say the work is finished. Write the answer in the task so the whole team works from the same meaning."
+  },
+  {
+    "id": "kb2",
+    "category": "scope_timeline_contract",
+    "question": "In a call the client asked for a new feature and said it is a small thing. It is not in the brief. Should I just build it to keep them happy?",
+    "answer": "Do not say yes or no on the call. Say you have noted it and will come back. Then check the brief and the SOW to confirm it is outside the agreed scope. Write down what the client asked in their words, the questions you still have, and a rough estimate in days. Tell your mentor before replying. The reply to the client should offer choices: add it with a new date and cost, swap it with something of similar size, or keep it for a later phase. A request feels small to the client because they cannot see the work behind it, so explain the effect on the deadline in plain language. Start only after written approval."
+  },
+  {
+    "id": "kb3",
+    "category": "architecture_design",
+    "question": "Our app marks an order as paid when the user comes back to the success page. Is that enough, or do we need something else?",
+    "answer": "Think about what happens if the user pays and never reaches that page. The network can drop, the tab can be closed, the phone can die. The money is taken but your server never hears about it. A flow that depends on the browser is not reliable for anything involving money. Payment providers solve this by calling your server directly when a payment completes. Read your provider's documentation on webhooks and look at three things: how to verify the call is really from them, how to handle the same event arriving twice, and how the success page and the server call can both exist without creating two orders. Draw the flow on paper first and bring it to me."
+  },
+  {
+    "id": "kb4",
+    "category": "development_debugging",
+    "question": "The client reported a bug but I cannot reproduce it on my laptop. What do I do?",
+    "answer": "Not reproducing a bug does not mean it is not real. It means your setup is different from theirs. Collect the facts first: which device and browser, what network, what exact steps, what time it happened. Ask for a screen recording if possible. Then check the server logs and the third-party dashboard for that time. Try to copy their conditions: slow network in browser dev tools, a small phone screen, closing the tab midway, a fresh account. Change one thing at a time and write down what you tried. When you can make it happen on purpose, you are halfway to the fix. If you are stuck after an hour, share your notes with me instead of guessing."
+  },
+  {
+    "id": "kb5",
+    "category": "deployment_handoff",
+    "question": "The client wants the site on their own domain and offered to share the registrar password. Their company email is on the same domain. How should I handle this?",
+    "answer": "Go slowly here, because a wrong DNS change can stop the client's email. First, avoid taking their password; ask for delegate access or do the change together on a screen-share call. Before changing anything, take a screenshot or export of all current DNS records. Find out where the email is hosted and identify which records belong to mail, such as MX and the TXT records for SPF and DKIM. Those must stay untouched. Do not change nameservers unless you have recreated every record on the other side. Add only the records your hosting provider asks for. Do it at a quiet time, test email and the site after, and note what you changed in the handover document."
+  },
+  {
+    "id": "kb6",
+    "category": "git_workflow",
+    "question": "My teammate and I both edited the same file and now I have a merge conflict. I am scared of losing her work. What is the safe way?",
+    "answer": "A conflict is only git asking you to decide, nothing is lost yet. Before you start, make sure your own work is committed, so you can always go back. Open the file and read both sides of each conflict marker. Understand what your teammate was trying to do; if you are unsure, call her for five minutes instead of picking your own version. Often the right answer keeps parts of both. After resolving, run the app and test the feature from both branches before committing. To reduce conflicts next time, keep branches short-lived, pull from the main branch every morning, and tell each other which files you are touching. Never force-push to a shared branch."
+  }
+]

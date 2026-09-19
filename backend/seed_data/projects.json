@@ -1,0 +1,44 @@
+[
+  {
+    "id": "p1",
+    "name": "Threadline Store",
+    "client_name": "Threadline Handlooms",
+    "client_contact": "Rohini Malhotra, Founder",
+    "repo_url": "https://github.com/burakorkmez/mern-ecommerce",
+    "repo_branch": "master",
+    "stage": "development",
+    "start_date": "2026-07-20",
+    "deadline": "2026-10-10",
+    "budget_inr": 85000,
+    "student_ids": ["s1", "s2"],
+    "mentor_id": "m1"
+  },
+  {
+    "id": "p2",
+    "name": "SkillBridge LMS",
+    "client_name": "SkillBridge Coaching Centre",
+    "client_contact": "Devendra Kulkarni, Director",
+    "repo_url": "https://github.com/elyse502/lms",
+    "repo_branch": "main",
+    "stage": "deployment",
+    "start_date": "2026-06-29",
+    "deadline": "2026-09-30",
+    "budget_inr": 110000,
+    "student_ids": ["s3", "s4"],
+    "mentor_id": "m2"
+  },
+  {
+    "id": "p3",
+    "name": "Pulse PM",
+    "client_name": "Northgate Events",
+    "client_contact": "Sameer Bhatia, Operations Head",
+    "repo_url": "https://github.com/Parvchaudhary040/pulse",
+    "repo_branch": "main",
+    "stage": "development",
+    "start_date": "2026-08-10",
+    "deadline": "2026-09-28",
+    "budget_inr": 70000,
+    "student_ids": ["s5", "s4"],
+    "mentor_id": "m1"
+  }
+]
