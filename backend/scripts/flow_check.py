@@ -93,6 +93,11 @@ async def main() -> None:
 
     chat_router._refresh_repo = no_repo_refresh
 
+    async def no_summaries(student_id, project_id, current_session_id):
+        return 0
+
+    chat_router.memory.summarise_pending = no_summaries
+
     async with SessionLocal() as db:
         await ingest_project_text(db, "p1", embed=False)
 
@@ -185,6 +190,14 @@ async def main() -> None:
 
         m = (await c.get("/mentor/metrics", headers=mentor)).json()
         check(f"metrics computed (deflection {m['deflection_rate']})", m["questions"] >= 3)
+
+        mem = (await c.get("/students/s1/memory", headers=mentor)).json()
+        check(
+            "struggle topic recorded in student memory",
+            "stripe webhooks" in mem["struggles"] and "stripe webhooks" in mem["markdown"],
+        )
+        r = await c.put("/students/s1/memory", headers=student, json={"markdown": "x"})
+        check("students cannot edit their memory file", r.status_code == 403)
 
         r = await c.post("/chat", headers=mentor, json={"project_id": "p1", "message": "hi"})
         check("mentors cannot use the student chat", r.status_code == 403)

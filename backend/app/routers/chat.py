@@ -11,7 +11,7 @@ from app.ingest.pipeline import sync_project_repo
 from app.ingest.repo import RepoError
 from app.models import Project, User
 from app.routers.projects import get_project_for
-from app.services import chat, sessions
+from app.services import chat, memory, sessions
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["chat"])
@@ -47,11 +47,14 @@ async def post_chat(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     project = await get_project_for(user, body.project_id, db)
-    if body.session_id is None:
-        background.add_task(_refresh_repo, project.id)
-    return await chat.ask(
+    reply = await chat.ask(
         db, student=user, project=project, session_id=body.session_id, message=body.message
     )
+    if body.session_id is None:
+        # A new session means earlier ones are finished: refresh the code, fold them into memory
+        background.add_task(_refresh_repo, project.id)
+        background.add_task(memory.summarise_pending, user.id, project.id, reply["session_id"])
+    return reply
 
 
 @router.post("/chat/{message_id}/feedback")

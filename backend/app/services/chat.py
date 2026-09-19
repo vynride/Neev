@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.agent import mentor
 from app.agent.mentor import MentorReply
 from app.models import Project, User
-from app.services import escalation, sessions
+from app.services import escalation, memory, sessions
 
 ESCALATED_MESSAGE = (
     "I have sent this to your mentor, {mentor}, with your question, what we tried and the "
@@ -181,6 +181,8 @@ async def ask(
 
     if reply.next_action == "ask_client":
         await escalation.record(db, "ask_client", project.id, student.id)
+    if reply.struggle_topic:
+        await memory.note_struggle(student.id, reply.category, reply.struggle_topic)
 
     turn = await _save_reply(session["_id"], message, reply, attempt=1)
     return _response(session["_id"], turn, reply)
