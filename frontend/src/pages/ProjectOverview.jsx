@@ -247,7 +247,7 @@ export const ProjectOverview = () => {
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <Avatar name={member.name} tone={member.role === 'mentor' ? 'orange' : 'green'} />
+                      <Avatar id={member.id} name={member.name} tone={member.role === 'mentor' ? 'orange' : 'green'} />
                       <div>
                         <div style={{ fontSize: '0.88rem', fontWeight: 700 }}>{member.name}</div>
                         <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', textTransform: 'capitalize' }}>

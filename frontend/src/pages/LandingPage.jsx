@@ -155,7 +155,7 @@ export const LandingPage = () => {
                 position: 'relative',
                 borderRadius: '28px',
                 overflow: 'hidden',
-                boxShadow: '0 20px 35px -10px rgba(30, 94, 58, 0.15)',
+                boxShadow: '0 20px 35px -10px rgba(35, 57, 91, 0.15)',
                 border: '4px solid #FFFFFF',
                 maxWidth: '460px',
                 width: '100%'

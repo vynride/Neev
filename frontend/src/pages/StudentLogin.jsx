@@ -109,7 +109,7 @@ export const StudentLogin = () => {
                         opacity: signingIn && signingIn !== u.id ? 0.5 : 1
                       }}
                     >
-                      <Avatar name={u.name} size={34} tone={group.role === 'student' ? 'green' : 'orange'} />
+                      <Avatar id={u.id} name={u.name} size={34} tone={group.role === 'student' ? 'green' : 'orange'} />
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>{u.name}</div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{u.email}</div>

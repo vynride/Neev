@@ -60,10 +60,19 @@ export const MentorChat = () => {
   const [project, setProject] = useState(null);
   const [inputText, setInputText] = useState(location.state?.prefill || '');
   const [isTyping, setIsTyping] = useState(false);
+  const [pendingIn, setPendingIn] = useState(null);
   const [feedbackBusyId, setFeedbackBusyId] = useState(null);
   const [error, setError] = useState('');
   const [escalationOpen, setEscalationOpen] = useState(false);
-  const messagesEndRef = useRef(null);
+  const scrollRef = useRef(null);
+  // A reply can arrive after the student has moved to another page. Nothing may navigate then.
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const inputRef = useRef(null);
 
   const loadSession = useCallback(async (id) => {
@@ -89,8 +98,10 @@ export const MentorChat = () => {
     loadSession(sessionId).catch((err) => setError(errorMessage(err)));
   }, [sessionId, loadSession]);
 
+  // Scroll the conversation itself, never the page around it
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    const el = scrollRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
   }, [messages, isTyping, feedbackBusyId]);
 
   // While a ticket is waiting on the mentor, check the session for their reply
@@ -112,17 +123,25 @@ export const MentorChat = () => {
     setInputText('');
     setError('');
     setIsTyping(true);
+    // The chat this question belongs to. If the student opens another chat while waiting,
+    // the reply must not land in that one.
+    const askedIn = sessionId;
+    setPendingIn(askedIn);
 
     try {
       const reply = await mentorService.ask(projectId, query, sessionId);
+      const stillHere = mounted.current && heldSession.current === askedIn;
       if (reply.session_id !== sessionId) {
+        window.dispatchEvent(new Event(SESSIONS_CHANGED));
+        // Changing the URL from a page the student has left would pull them back to the chat
+        if (!stillHere) return;
         heldSession.current = reply.session_id;
         setSearchParams({ s: reply.session_id }, { replace: true });
-        window.dispatchEvent(new Event(SESSIONS_CHANGED));
       }
+      if (!stillHere) return;
       setMessages((prev) => [...prev, fromReply(reply)]);
     } catch (err) {
-      setError(errorMessage(err));
+      if (mounted.current && heldSession.current === askedIn) setError(errorMessage(err));
     } finally {
       setIsTyping(false);
     }
@@ -133,6 +152,7 @@ export const MentorChat = () => {
     setError('');
     try {
       const reply = await mentorService.sendFeedback(msg.message_id, resolved);
+      if (!mounted.current || heldSession.current !== sessionId) return;
       setMessages((prev) => {
         const marked = prev.map((m) => (m.id === msg.id ? { ...m, resolved } : m));
         // "Not solved" comes back with a second attempt, a past mentor answer, or a ticket
@@ -152,7 +172,8 @@ export const MentorChat = () => {
     }
   };
 
-  const mentorName = project?.team.find((m) => m.role === 'mentor')?.name || '';
+  const mentor = project?.team.find((m) => m.role === 'mentor');
+  const mentorName = mentor?.name || '';
   const busy = isTyping || !!feedbackBusyId;
   const isEmpty = messages.length === 0 && !busy && !sessionId;
   const canSend = inputText.trim() && !busy;
@@ -160,7 +181,7 @@ export const MentorChat = () => {
   return (
     // Negative margin cancels the page padding: the conversation runs edge to edge
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, margin: '-24px -28px' }}>
-      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
         <div style={{ padding: '28px clamp(28px, 5vw, 88px) 12px', display: 'flex', flexDirection: 'column', gap: '26px', minHeight: '100%' }}>
           {isEmpty && (
             <div className="fade-enter" style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '22px', paddingBottom: '6vh' }}>
@@ -208,7 +229,7 @@ export const MentorChat = () => {
             return (
               <div key={msg.id} className="msg-enter" style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
                 {isMentor ? (
-                  <Avatar name={msg.mentor_name || 'Mentor'} size={30} tone="orange" />
+                  <Avatar id={mentor?.id} name={msg.mentor_name || 'Mentor'} size={30} tone="orange" />
                 ) : (
                   <img src="/logo.svg" alt="" style={{ width: '30px', height: '30px', flexShrink: 0 }} />
                 )}
@@ -238,14 +259,13 @@ export const MentorChat = () => {
             );
           })}
 
-          {busy && (
+          {(feedbackBusyId || (isTyping && pendingIn === sessionId)) && (
             <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
               <img src="/logo.svg" alt="" style={{ width: '30px', height: '30px', flexShrink: 0 }} />
               <Thinking />
             </div>
           )}
           {error && <div className="notice-error">{error}</div>}
-          <div ref={messagesEndRef} />
         </div>
       </div>
 

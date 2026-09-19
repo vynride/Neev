@@ -47,7 +47,7 @@ export const UserMenu = ({ showProfile = true }) => {
           boxShadow: open ? '0 0 0 2px var(--color-primary)' : '0 0 0 1px var(--color-border)'
         }}
       >
-        <Avatar name={user.name} size={34} tone={user.role === 'student' ? 'green' : 'orange'} />
+        <Avatar id={user.id} name={user.name} size={34} tone={user.role === 'student' ? 'green' : 'orange'} />
       </button>
 
       {open && (

@@ -1,15 +1,15 @@
-/* Palette: warm paper, forest ink, clay accent. Every colour in the app comes from here. */
+/* Palette: warm paper, ink blue, clay accent. Every colour in the app comes from here. */
 :root {
   --bg-app: #F7F5F0;
   --bg-surface: #FFFFFF;
   --bg-subtle: #F2EFE8;
   --bg-sidebar: #FBFAF6;
-  --bg-accent-soft: #EEF3EE;
+  --bg-accent-soft: #EFF2F7;
 
-  --color-primary: #1F4D3A;
-  --color-primary-hover: #173B2C;
-  --color-primary-subtle: #E3EDE6;
-  --color-primary-border: #BFD3C5;
+  --color-primary: #23395B;
+  --color-primary-hover: #1A2B45;
+  --color-primary-subtle: #E4EAF3;
+  --color-primary-border: #C2CEDF;
 
   --color-accent: #B8563C;
   --color-accent-hover: #9C4730;
@@ -17,21 +17,21 @@
   --color-accent-subtle: #F6E9E2;
   --color-accent-border: #E6C6B7;
 
-  --color-info: #2F4A63;
-  --color-info-subtle: #E8EEF3;
+  --color-info: #4C4468;
+  --color-info-subtle: #ECEAF3;
   --color-danger: #8A2B1E;
   --color-danger-subtle: #F8E9E6;
   --color-danger-border: #E9C4BD;
 
-  --color-text-main: #1B1F1D;
-  --color-text-muted: #66706A;
-  --color-text-subtle: #98A09A;
+  --color-text-main: #1A1D23;
+  --color-text-muted: #656B76;
+  --color-text-subtle: #989DA7;
 
   --color-border: #E4E0D6;
   --color-border-subtle: #EEEBE3;
   --color-border-strong: #CFCABD;
 
-  --code-bg: #1C211F;
+  --code-bg: #1B1F2A;
   --code-text: #DDE3DD;
 
   --radius-sm: 6px;

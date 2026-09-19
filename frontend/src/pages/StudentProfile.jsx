@@ -55,7 +55,7 @@ export const StudentProfile = () => {
       <Card style={{ padding: '28px 32px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-            <Avatar name={user.name} size={84} />
+            <Avatar id={user.id} name={user.name} size={84} />
             <div>
               <h1 style={{ fontSize: '1.65rem', fontWeight: 800, color: 'var(--color-text-main)', letterSpacing: '-0.02em' }}>
                 {user.name}
@@ -200,7 +200,7 @@ export const StudentProfile = () => {
               <h3 style={{ fontSize: '1.05rem', fontWeight: 800 }}>Your Barabari Mentor</h3>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px', background: 'var(--bg-subtle)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', marginBottom: '16px' }}>
-              <Avatar name={mentor.name} size={52} tone="orange" />
+              <Avatar id={mentor.id} name={mentor.name} size={52} tone="orange" />
               <div>
                 <div style={{ fontSize: '1rem', fontWeight: 800 }}>{mentor.name}</div>
                 <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>Mentor for {project.name}</div>
