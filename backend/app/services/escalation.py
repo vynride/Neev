@@ -6,9 +6,7 @@ from datetime import datetime, timezone
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agent.search import KB_MATCH_THRESHOLD, search_kb
-from app.config import get_settings
-from app.llm.client import get_llm
+from app.agent.search import KB_MATCH_THRESHOLD, embed_or_none, search_kb
 from app.models import Assignment, KBEntry, MetricEvent, Ticket
 
 
@@ -89,8 +87,7 @@ async def resolve_ticket(db: AsyncSession, ticket: Ticket, answer: str) -> KBEnt
             answer=answer,
             source_ticket_id=ticket.id,
         )
-        if get_settings().openai_api_key:
-            entry.embedding = (await get_llm().embed([f"{ticket.question}\n{answer}"]))[0]
+        entry.embedding = await embed_or_none(f"{ticket.question}\n{answer}")
         db.add(entry)
     await db.commit()
     return entry

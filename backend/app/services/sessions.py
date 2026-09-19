@@ -53,6 +53,13 @@ async def find_turn(message_id: str, student_id: str) -> tuple[dict, dict] | Non
     return session, turn
 
 
+async def mark_resolved(session_id: str, message_id: str, resolved: bool) -> None:
+    await get_mongo()[SESSIONS].update_one(
+        {"_id": session_id, "turns.id": message_id},
+        {"$set": {"turns.$.resolved": resolved, "updated_at": _now()}},
+    )
+
+
 def history(session: dict) -> list[dict]:
     """Prior turns in the neutral LLM message format. Mentor replies read as assistant turns."""
     out = []

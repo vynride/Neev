@@ -26,7 +26,7 @@ def _or_tsquery(query: str) -> str:
     return " | ".join(words[:12])
 
 
-async def _embed_query(query: str) -> list[float] | None:
+async def embed_or_none(query: str) -> list[float] | None:
     if not get_settings().openai_api_key:
         return None
     try:
@@ -54,7 +54,7 @@ async def search_chunks(db: AsyncSession, project_id: str, query: str, k: int = 
             rows[chunk.id] = chunk
             scores[chunk.id] = scores.get(chunk.id, 0) + 1 / (RRF_K + rank)
 
-    vec = await _embed_query(query)
+    vec = await embed_or_none(query)
     if vec is not None:
         stmt = (
             select(Chunk)
@@ -72,7 +72,7 @@ async def search_chunks(db: AsyncSession, project_id: str, query: str, k: int = 
 
 async def search_kb(db: AsyncSession, query: str, k: int = 3) -> list[tuple[KBEntry, float]]:
     """Past mentor answers with a similarity score in 0..1 (0 when only keyword-matched)."""
-    vec = await _embed_query(query)
+    vec = await embed_or_none(query)
     if vec is not None:
         distance = KBEntry.embedding.cosine_distance(vec)
         stmt = (
@@ -81,7 +81,9 @@ async def search_kb(db: AsyncSession, query: str, k: int = 3) -> list[tuple[KBEn
             .order_by(distance)
             .limit(k)
         )
-        return [(entry, 1 - float(dist)) for entry, dist in (await db.execute(stmt)).all()]
+        hits = [(entry, 1 - float(dist)) for entry, dist in (await db.execute(stmt)).all()]
+        if hits:
+            return hits
 
     tsq = _or_tsquery(query)
     if not tsq:
