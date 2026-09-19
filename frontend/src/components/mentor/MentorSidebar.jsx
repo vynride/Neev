@@ -1,11 +1,16 @@
 import React from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, AlertTriangle, Users, Sparkles, X } from "lucide-react";
+import { LayoutDashboard, AlertTriangle, Users, Sparkles, X, Inbox } from "lucide-react";
 
 export default function MentorSidebar({ mobileOpen, onCloseMobile }) {
   const location = useLocation();
 
   const menuItems = [
+    {
+      name: "Live Tickets",
+      icon: Inbox,
+      path: "/mentor/desk",
+    },
     {
       name: "Dashboard",
       icon: LayoutDashboard,

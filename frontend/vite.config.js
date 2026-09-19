@@ -6,6 +6,10 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 3000,
-    open: false
+    open: false,
+    // The FastAPI backend; proxying keeps the browser on one origin, so no CORS setup is needed
+    proxy: {
+      '/api': { target: process.env.VITE_BACKEND_URL || 'http://localhost:8000', changeOrigin: true }
+    }
   }
 })

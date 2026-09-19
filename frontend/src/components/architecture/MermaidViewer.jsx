@@ -1,54 +1,91 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import mermaid from 'mermaid';
-import { RefreshCw, Maximize2, Download, Info, Check } from 'lucide-react';
+import { Maximize2, Download, Check, X, Loader2 } from 'lucide-react';
 
+// Light nodes with dark text, in the app's palette
 mermaid.initialize({
   startOnLoad: false,
   theme: 'base',
   themeVariables: {
-    primaryColor: '#1E5E3A',
-    primaryTextColor: '#FFFFFF',
-    primaryBorderColor: '#164E2E',
-    lineColor: '#64748B',
-    secondaryColor: '#DCFCE7',
-    tertiaryColor: '#FEF3C7',
+    background: '#FFFFFF',
+    primaryColor: '#E3EDE6',
+    primaryTextColor: '#1B1F1D',
+    primaryBorderColor: '#1F4D3A',
+    secondaryColor: '#F6E9E2',
+    secondaryTextColor: '#1B1F1D',
+    secondaryBorderColor: '#B8563C',
+    tertiaryColor: '#F2EFE8',
+    tertiaryTextColor: '#1B1F1D',
+    tertiaryBorderColor: '#CFCABD',
+    textColor: '#1B1F1D',
+    nodeTextColor: '#1B1F1D',
+    titleColor: '#1B1F1D',
+    lineColor: '#66706A',
+    edgeLabelBackground: '#FFFFFF',
+    clusterBkg: '#FBFAF6',
+    clusterBorder: '#CFCABD',
+    actorBkg: '#E3EDE6',
+    actorBorder: '#1F4D3A',
+    actorTextColor: '#1B1F1D',
+    signalColor: '#66706A',
+    signalTextColor: '#1B1F1D',
+    labelBoxBkgColor: '#F2EFE8',
+    labelTextColor: '#1B1F1D',
+    noteBkgColor: '#F6E9E2',
+    noteBorderColor: '#E6C6B7',
+    noteTextColor: '#1B1F1D',
     fontFamily: 'Plus Jakarta Sans, Inter, sans-serif',
     fontSize: '13px'
   },
-  securityLevel: 'loose',
-  flowchart: {
-    curve: 'basis',
-    useMaxWidth: true,
-    htmlLabels: true
-  }
+  securityLevel: 'strict',
+  flowchart: { curve: 'basis', useMaxWidth: true, htmlLabels: true, padding: 14 }
 });
 
-export const MermaidViewer = ({ chartDefinition, onRegenerate }) => {
-  const containerRef = useRef(null);
+// The model often styles nodes itself (dark fills, white text). Dropping those lines keeps every
+// diagram in one readable theme: dark text on light nodes.
+const withoutInlineStyles = (definition) =>
+  definition
+    .split('\n')
+    .filter((line) => !/^\s*(classDef|style|linkStyle)\s/.test(line))
+    .map((line) => line.replace(/:::[\w-]+/g, ''))
+    .join('\n');
+
+const toolButton = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '5px',
+  fontSize: '0.72rem',
+  fontWeight: 600,
+  color: 'var(--color-text-muted)',
+  padding: '4px 8px',
+  borderRadius: 'var(--radius-sm)'
+};
+
+export const MermaidViewer = ({ chartDefinition }) => {
   const [svgContent, setSvgContent] = useState('');
   const [isExpanded, setIsExpanded] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
-  const [isRendering, setIsRendering] = useState(false);
-  const [renderError, setRenderError] = useState(null);
-
-  const renderDiagram = async () => {
-    if (!chartDefinition) return;
-    setIsRendering(true);
-    setRenderError(null);
-    try {
-      const id = `mermaid-saathi-${Math.random().toString(36).substring(2, 9)}`;
-      const { svg } = await mermaid.render(id, chartDefinition);
-      setSvgContent(svg);
-    } catch (err) {
-      console.warn('Mermaid rendering fallback', err);
-      setRenderError('Could not render complex diagram graph. Showing structured flow.');
-    } finally {
-      setIsRendering(false);
-    }
-  };
+  const [renderError, setRenderError] = useState(false);
 
   useEffect(() => {
-    renderDiagram();
+    let cancelled = false;
+    const render = async () => {
+      if (!chartDefinition) return;
+      try {
+        const id = `mermaid-saathi-${Math.random().toString(36).substring(2, 9)}`;
+        const { svg } = await mermaid.render(id, withoutInlineStyles(chartDefinition));
+        if (!cancelled) {
+          setSvgContent(svg);
+          setRenderError(false);
+        }
+      } catch {
+        if (!cancelled) setRenderError(true);
+      }
+    };
+    render();
+    return () => {
+      cancelled = true;
+    };
   }, [chartDefinition]);
 
   const handleDownload = () => {
@@ -57,7 +94,7 @@ export const MermaidViewer = ({ chartDefinition, onRegenerate }) => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'project-saathi-architecture.svg';
+    link.download = 'diagram.svg';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -66,171 +103,57 @@ export const MermaidViewer = ({ chartDefinition, onRegenerate }) => {
     setTimeout(() => setDownloaded(false), 2000);
   };
 
+  // A diagram the model got wrong is still useful as text
+  if (renderError) {
+    return (
+      <div className="code-block">
+        <div className="code-block-bar"><span>diagram (could not be drawn)</span></div>
+        <pre><code>{chartDefinition}</code></pre>
+      </div>
+    );
+  }
+
   return (
-    <div
-      style={{
-        marginTop: '16px',
-        border: '1.5px solid var(--color-border)',
-        borderRadius: 'var(--radius-md)',
-        background: '#FFFFFF',
-        overflow: 'hidden'
-      }}
-    >
-      {/* Header Toolbar */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '10px 16px',
-          background: '#F8FAFC',
-          borderBottom: '1px solid var(--color-border)'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Info size={15} color="var(--color-primary)" />
-          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text-main)' }}>
-            System Architecture
-          </span>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {onRegenerate && (
-            <button
-              onClick={onRegenerate}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px',
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                color: 'var(--color-text-muted)',
-                padding: '4px 8px',
-                borderRadius: 'var(--radius-sm)',
-                background: '#FFFFFF',
-                border: '1px solid var(--color-border)'
-              }}
-              title="Regenerate Diagram"
-            >
-              <RefreshCw size={12} className={isRendering ? 'animate-spin' : ''} />
-              Regenerate
-            </button>
-          )}
-
-          <button
-            onClick={() => setIsExpanded(true)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px',
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              color: 'var(--color-text-muted)',
-              padding: '4px 8px',
-              borderRadius: 'var(--radius-sm)',
-              background: '#FFFFFF',
-              border: '1px solid var(--color-border)'
-            }}
-            title="Expand Diagram"
-          >
-            <Maximize2 size={12} />
-            Expand
+    <div style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: '#FFFFFF', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px 6px 14px', borderBottom: '1px solid var(--color-border-subtle)' }}>
+        <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-subtle)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+          Diagram
+        </span>
+        <div style={{ display: 'flex', gap: '2px' }}>
+          <button className="hover-row" onClick={() => setIsExpanded(true)} style={toolButton} title="Expand">
+            <Maximize2 size={12} /> Expand
           </button>
-
-          <button
-            onClick={handleDownload}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px',
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              color: downloaded ? '#166534' : 'var(--color-text-muted)',
-              padding: '4px 8px',
-              borderRadius: 'var(--radius-sm)',
-              background: downloaded ? '#DCFCE7' : '#FFFFFF',
-              border: '1px solid var(--color-border)'
-            }}
-            title="Download SVG Diagram"
-          >
-            {downloaded ? <Check size={12} /> : <Download size={12} />}
-            {downloaded ? 'Downloaded' : 'Download'}
+          <button className="hover-row" onClick={handleDownload} style={toolButton} title="Download as SVG">
+            {downloaded ? <Check size={12} /> : <Download size={12} />} {downloaded ? 'Saved' : 'Download'}
           </button>
         </div>
       </div>
 
-      {/* Diagram Canvas */}
-      <div
-        ref={containerRef}
-        style={{
-          padding: '24px',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          minHeight: '220px',
-          overflowX: 'auto',
-          background: '#FAFAFA'
-        }}
-      >
-        {isRendering ? (
-          <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <RefreshCw size={16} className="animate-spin" /> Rendering diagram...
-          </div>
-        ) : renderError ? (
-          <div style={{ padding: '16px', background: '#FEF2F2', color: '#991B1B', borderRadius: 'var(--radius-md)', fontSize: '0.85rem' }}>
-            {renderError}
-          </div>
-        ) : svgContent ? (
-          <div
-            style={{ width: '100%', display: 'flex', justifyContent: 'center' }}
-            dangerouslySetInnerHTML={{ __html: svgContent }}
-          />
+      <div style={{ padding: '20px', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '160px', overflowX: 'auto' }}>
+        {svgContent ? (
+          <div className="fade-enter" style={{ width: '100%', display: 'flex', justifyContent: 'center' }} dangerouslySetInnerHTML={{ __html: svgContent }} />
         ) : (
-          <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
-            Diagram will appear here
-          </div>
+          <Loader2 size={18} className="animate-spin" color="var(--color-text-subtle)" />
         )}
       </div>
 
-      {/* Modal for Expanded View */}
       {isExpanded && (
         <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(15, 23, 42, 0.7)',
-            backdropFilter: 'blur(4px)',
-            zIndex: 1100,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '30px'
-          }}
+          className="fade-enter"
+          style={{ position: 'fixed', inset: 0, background: 'rgba(27, 31, 29, 0.55)', backdropFilter: 'blur(4px)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '30px' }}
           onClick={() => setIsExpanded(false)}
         >
           <div
-            style={{
-              background: '#FFFFFF',
-              borderRadius: 'var(--radius-lg)',
-              maxWidth: '960px',
-              width: '100%',
-              padding: '24px',
-              boxShadow: 'var(--shadow-lg)'
-            }}
+            className="modal-enter"
+            style={{ background: '#FFFFFF', borderRadius: 'var(--radius-lg)', maxWidth: '1200px', width: '100%', maxHeight: '90vh', overflow: 'auto', padding: '20px', boxShadow: 'var(--shadow-lg)' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--color-primary)' }}>
-                System Architecture — Expanded View
-              </h3>
-              <button onClick={() => setIsExpanded(false)} style={{ padding: '6px' }}>
-                ✕
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
+              <button className="hover-row" onClick={() => setIsExpanded(false)} style={{ padding: '6px', borderRadius: 'var(--radius-sm)' }}>
+                <X size={18} />
               </button>
             </div>
-            <div
-              style={{ overflowX: 'auto', padding: '20px', background: '#FAFAFA', borderRadius: 'var(--radius-md)', display: 'flex', justifyContent: 'center' }}
-              dangerouslySetInnerHTML={{ __html: svgContent }}
-            />
+            <div style={{ display: 'flex', justifyContent: 'center' }} dangerouslySetInnerHTML={{ __html: svgContent }} />
           </div>
         </div>
       )}

@@ -41,7 +41,7 @@ export const LandingPage = () => {
           <a href="#about" style={{ fontSize: '0.92rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>About</a>
           <a href="#impact" style={{ fontSize: '0.92rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Impact</a>
           <Link to="/login" style={{ fontSize: '0.92rem', fontWeight: 600, color: 'var(--color-primary)' }}>Student Login</Link>
-          <Link to="/mentor/dashboard" style={{ fontSize: '0.92rem', fontWeight: 600, color: 'var(--color-accent)' }}>Mentor Portal</Link>
+          <Link to="/login" style={{ fontSize: '0.92rem', fontWeight: 600, color: 'var(--color-accent)' }}>Mentor Portal</Link>
           <Button onClick={() => navigate('/login')} variant="primary" size="md">
             Get Started <ArrowRight size={16} />
           </Button>
@@ -93,7 +93,7 @@ export const LandingPage = () => {
               <Button onClick={() => navigate('/login')} variant="primary" size="lg">
                 Get Started <ArrowRight size={18} />
               </Button>
-              <Button onClick={() => navigate('/student/dashboard')} variant="outline" size="lg">
+              <Button onClick={() => navigate('/login')} variant="outline" size="lg">
                 Explore Demo
               </Button>
             </div>
@@ -137,10 +137,10 @@ export const LandingPage = () => {
                 position: 'absolute',
                 top: '-20px',
                 right: '10px',
-                background: '#F0FDF4',
+                background: 'var(--bg-accent-soft)',
                 padding: '12px 18px',
                 borderRadius: 'var(--radius-lg)',
-                border: '1px solid #DCFCE7',
+                border: '1px solid var(--color-primary-subtle)',
                 boxShadow: 'var(--shadow-sm)',
                 zIndex: 10
               }}
@@ -156,7 +156,7 @@ export const LandingPage = () => {
                 position: 'relative',
                 borderRadius: '28px',
                 overflow: 'hidden',
-                boxShadow: '0 20px 35px -10px rgba(30, 94, 58, 0.15)',
+                boxShadow: '0 20px 35px -10px rgba(31, 77, 58, 0.15)',
                 border: '4px solid #FFFFFF',
                 maxWidth: '460px',
                 width: '100%'
@@ -185,7 +185,7 @@ export const LandingPage = () => {
                   gap: '12px'
                 }}
               >
-                <div style={{ background: '#DCFCE7', padding: '10px', borderRadius: '50%', color: '#166534' }}>
+                <div style={{ background: 'var(--color-primary-subtle)', padding: '10px', borderRadius: '50%', color: 'var(--color-primary)' }}>
                   <Award size={20} />
                 </div>
                 <div>
@@ -218,7 +218,7 @@ export const LandingPage = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <img src="/logo.svg" alt="Barabari" style={{ width: '24px', height: '24px' }} />
           <span style={{ fontWeight: 800, color: 'var(--color-primary)', fontSize: '0.9rem' }}>Barabari</span>
-          <span style={{ color: '#94A3B8' }}>|</span>
+          <span style={{ color: 'var(--color-text-subtle)' }}>|</span>
           <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Project Saathi</span>
         </div>
 

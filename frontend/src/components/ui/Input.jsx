@@ -36,7 +36,7 @@ export const Input = ({
             padding: '11px 14px',
             paddingRight: isPassword ? '40px' : '14px',
             borderRadius: 'var(--radius-md)',
-            border: `1.5px solid ${error ? 'var(--color-accent)' : 'var(--color-border)'}`,
+            border: `1px solid ${error ? 'var(--color-accent)' : 'var(--color-border)'}`,
             background: 'var(--bg-surface)',
             fontSize: '0.9rem',
             color: 'var(--color-text-main)',

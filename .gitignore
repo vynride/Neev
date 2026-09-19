@@ -10,7 +10,8 @@ ssh-creds/
 
 # archives and cloned demo repos
 *.zip
-data/
+/data/
+backend/data/
 
 # python
 __pycache__/

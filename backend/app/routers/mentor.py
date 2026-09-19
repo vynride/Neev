@@ -52,7 +52,17 @@ async def list_tickets(
     stmt = select(Ticket).where(Ticket.status == status).order_by(Ticket.created_at.desc())
     if user.role == "mentor":
         stmt = stmt.where(Ticket.mentor_id == user.id)
-    return [ticket_out(t) for t in (await db.execute(stmt)).scalars().all()]
+    tickets = (await db.execute(stmt)).scalars().all()
+    students = {u.id: u.name for u in (await db.execute(select(User))).scalars()}
+    projects = {p.id: p.name for p in (await db.execute(select(Project))).scalars()}
+    return [
+        {
+            **ticket_out(t),
+            "student_name": students.get(t.student_id, t.student_id),
+            "project_name": projects.get(t.project_id, t.project_id),
+        }
+        for t in tickets
+    ]
 
 
 @router.get("/tickets/{ticket_id}")
