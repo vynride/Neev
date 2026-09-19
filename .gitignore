@@ -1,1 +1,25 @@
 ssh-creds/
+
+# secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.ppk
+*.key
+
+# archives and cloned demo repos
+*.zip
+data/
+
+# python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# editors / OS
+.vscode/
+.idea/
+.DS_Store
