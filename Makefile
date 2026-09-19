@@ -19,8 +19,9 @@ seed:
 ingest:
 	cd backend && uv run python -m app.ingest.pipeline
 
-# Escalation flow with a fake LLM: needs the databases, not keys
-check:
+# Escalation flow with a fake LLM: needs the databases, not keys.
+# Reseeds first: a knowledge base entry left by an earlier run would answer the test question.
+check: seed
 	cd backend && uv run python -W ignore -m scripts.flow_check
 
 # Demo path against a running server with real models
