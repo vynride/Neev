@@ -19,7 +19,7 @@ from app.llm import client as llm_client
 from app.llm.client import LLMResult, ToolCall
 from app.main import app
 from app.routers import chat as chat_router
-from app.services import escalation
+from app.services import escalation, shared_answers
 
 QUESTION = "Customers pay but the order does not show up. What is wrong?"
 
@@ -27,15 +27,35 @@ QUESTION = "Customers pay but the order does not show up. What is wrong?"
 class FakeLLM:
     """Classifies everything as project debugging, greps once, then answers with citations."""
 
+    calls = 0
+
     async def complete(self, *, system, messages, tools=None, json_schema=None, **_) -> LLMResult:
+        FakeLLM.calls += 1
         if json_schema and json_schema["name"] == "route":
             wants_human = "talk to my mentor" in messages[-1]["content"]
+            general = messages[-1]["content"].startswith("What is")
             return LLMResult(
                 text=json.dumps(
                     {
                         "category": "development_debugging",
-                        "scope": "project_specific",
+                        "scope": "generic" if general else "project_specific",
                         "wants_human": wants_human,
+                    }
+                )
+            )
+        if "This is a general question" in system:
+            return LLMResult(
+                text=json.dumps(
+                    {
+                        "next_action": "answered",
+                        "message": "An API is a contract between two programs. " * 8,
+                        "citations": [],
+                        "resources": [],
+                        "draft_client_message": None,
+                        "sensitive": False,
+                        "sensitive_reason": None,
+                        "struggle_topic": None,
+                        "project_note": "Threadline calls its own API from the storefront.",
                     }
                 )
             )
@@ -87,6 +107,7 @@ async def main() -> None:
 
     search.embed_or_none = fake_embed_query
     escalation.embed_or_none = fake_embed_query
+    shared_answers.embed_or_none = fake_embed_query
 
     async def no_repo_refresh(project_id):
         return None
@@ -188,7 +209,52 @@ async def main() -> None:
         ).json()
         check("asking for a human escalates directly", h["next_action"] == "escalated")
 
+        # A general question: answered by the model once, then served to the next student
+        ask = {"project_id": "p1", "message": "What is an API?"}
+        g1 = (await c.post("/chat", headers=student, json=ask)).json()
+        check(
+            "general answer carries a note about her project",
+            not g1["from_shared"] and "In your project:" in g1["message"],
+        )
+        before = FakeLLM.calls
+        other = await login("s2")
+        g2 = (await c.post("/chat", headers=other, json=ask)).json()
+        check("same question from another student is served from shared answers", g2["from_shared"])
+        check("shared answer needed no model call", FakeLLM.calls == before)
+        check(
+            "shared answer leaves out the first student's project note",
+            "Threadline" not in g2["message"] and "contract between" in g2["message"],
+        )
+
+        # She rejects the saved answer: the mentor reviews it, and the fix is what others get
+        r = await c.post(
+            f"/chat/{g2['message_id']}/feedback",
+            headers=other,
+            json={"resolved": False, "reason": "Too abstract, I need an example"},
+        )
+        review = r.json()
+        check("rejected saved answer goes to the mentor", review["next_action"] == "escalated")
+        third = await login("s3")
+        held = (await c.post("/chat", headers=third, json={**ask, "project_id": "p2"})).json()
+        check("a saved answer under review is not served", not held["from_shared"])
+        detail = (await c.get(f"/mentor/tickets/{review['ticket_id']}", headers=mentor)).json()
+        check(
+            "mentor sees the complaint and that the answer is shared",
+            detail["shared_review"] and "Too abstract" in detail["tried"],
+        )
+        fixed = "An API is a menu: you order by name and the kitchen decides how to cook it. " * 4
+        r = await c.post(
+            f"/mentor/tickets/{review['ticket_id']}/resolve", headers=mentor, json={"answer": fixed}
+        )
+        check("mentor's answer replaces the saved one", r.json()["shared"])
+        g3 = (await c.post("/chat", headers=third, json={**ask, "project_id": "p2"})).json()
+        check(
+            "next student gets the mentor's version",
+            g3["from_shared"] and "menu" in g3["message"] and g3["reviewed_by"],
+        )
+
         m = (await c.get("/mentor/metrics", headers=mentor)).json()
+        check("shared answers are counted", m["answered_from_shared"] == 2)
         check(f"metrics computed (deflection {m['deflection_rate']})", m["questions"] >= 3)
 
         mem = (await c.get("/students/s1/memory", headers=mentor)).json()

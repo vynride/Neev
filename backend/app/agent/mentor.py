@@ -3,11 +3,18 @@
 import asyncio
 import json
 import logging
+import re
 from dataclasses import dataclass, field
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agent.prompts import ANSWER_SCHEMA, CLASSIFY_SCHEMA, CLASSIFY_SYSTEM, build_system
+from app.agent.prompts import (
+    ANSWER_SCHEMA,
+    CLASSIFY_SCHEMA,
+    CLASSIFY_SYSTEM,
+    GENERAL_NOTE,
+    build_system,
+)
 from app.agent.tools import ToolContext, run_tool, tools_for
 from app.config import get_settings
 from app.db.mongo import PROJECT_MEMORY, STUDENT_MEMORY, get_mongo
@@ -40,6 +47,10 @@ class MentorReply:
     sensitive_reason: str | None = None
     struggle_topic: str | None = None
     wants_human: bool = False
+    # The part of a general answer that reads the same for any student; None otherwise
+    shareable: str | None = None
+    # The mentor who checked a shared answer, if one has
+    reviewed_by: str | None = None
     excerpts: list[dict] = field(default_factory=list)
     tool_calls: list[dict] = field(default_factory=list)
 
@@ -91,6 +102,21 @@ def _validate(reply: dict, ctx: ToolContext) -> tuple[list[dict], list[dict]]:
     return citations, resources[:3]
 
 
+def _spoken(text: str, sentences: int = 2) -> str:
+    """A call is a back and forth: keep what is said to two sentences, whatever the model wrote."""
+    text = re.sub(r"[`*_#]", "", text)
+    parts = re.findall(r".+?(?:[.?!।]+(?=\s|$)|$)", text.strip(), flags=re.DOTALL)
+    kept, count = [], 0
+    for part in parts:
+        if count == sentences:
+            break
+        kept.append(part)
+        # "Okay." or "Right." is a reaction, not one of the two sentences
+        if len(part.strip()) > 12:
+            count += 1
+    return "".join(kept).strip()
+
+
 async def answer(
     db: AsyncSession,
     *,
@@ -125,6 +151,9 @@ async def answer(
     )
     if extra_context:
         system += "\n\n" + extra_context
+    general = route.scope == "generic" and not voice and not previous_answer
+    if general:
+        system += GENERAL_NOTE
     if route.scope == "project_specific":
         system += "\n\n# Repository map\n" + await run_tool(ctx, "repo_overview", {})
 
@@ -160,6 +189,12 @@ async def answer(
         data = {"next_action": "answered", "message": text or "I could not produce an answer."}
 
     citations, resources = _validate(data, ctx)
+    if voice:
+        data["message"] = _spoken(data.get("message", ""))
+    body = data.get("message", "")
+    note = (data.get("project_note") or "").strip()
+    if note:
+        data["message"] = f"{body}\n\n**In your project:** {note}"
     return MentorReply(
         category=route.category,
         scope=route.scope,
@@ -172,6 +207,7 @@ async def answer(
         sensitive_reason=data.get("sensitive_reason"),
         struggle_topic=data.get("struggle_topic"),
         wants_human=route.wants_human,
+        shareable=body if general else None,
         excerpts=ctx.excerpts[:8],
         tool_calls=ctx.calls,
     )

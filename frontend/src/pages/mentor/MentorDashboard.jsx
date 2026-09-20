@@ -1,276 +1,186 @@
-import React from "react";
-import { useNavigate } from "react-router-dom";
-import {
-  Users,
-  FolderGit2,
-  CheckCircle2,
-  TrendingUp,
-  AlertTriangle,
-  ArrowRight,
-  Sparkles
-} from "lucide-react";
-import StatCard from "../../components/mentor/StatCard";
-import StudentTable from "../../components/mentor/StudentTable";
-import EscalationCard from "../../components/mentor/EscalationCard";
-import ProgressBar from "../../components/mentor/ProgressBar";
-import {
-  mentorStats,
-  initialStudents,
-  initialEscalations
-} from "../../data/mentorData";
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ShieldCheck, LifeBuoy, GraduationCap, Timer, Inbox, CalendarClock, ChevronRight, Info } from 'lucide-react';
+import { PageHeader, StatTile, SectionCard, ProgressBar, TextLink, EmptyState, Loading } from '../../components/ui/Bits';
+import { Badge } from '../../components/ui/Card';
+import { Avatar } from '../../components/ui/Avatar';
+import { TicketRow } from '../../components/mentor/TicketRow';
+import { mentorDeskService } from '../../services/mentorDeskService';
+import { errorMessage } from '../../services/apiClient';
+import { waitingFor } from '../../services/format';
+import { useAuth } from '../../context/AuthContext';
+
+const daysLeft = (iso) => (iso ? Math.ceil((new Date(`${iso}T00:00:00`) - new Date()) / 86400000) : null);
 
 export default function MentorDashboard() {
+  const { user } = useAuth();
   const navigate = useNavigate();
+  const [data, setData] = useState(null);
+  const [error, setError] = useState('');
 
-  // Highlight recent escalations (up to 2)
-  const recentEscalations = initialEscalations.slice(0, 2);
+  useEffect(() => {
+    Promise.all([
+      mentorDeskService.getMetrics(),
+      mentorDeskService.listTickets('open'),
+      mentorDeskService.listProjects(),
+      mentorDeskService.listStudents()
+    ])
+      .then(([metrics, tickets, projects, students]) => setData({ metrics, tickets, projects, students }))
+      .catch((err) => setError(errorMessage(err)));
+  }, []);
 
-  // Top project progress items
-  const projectProgressList = [
-    { name: "AI Resume Analyzer", student: "Rahul Sharma", progress: 85, status: "On Track" },
-    { name: "Medical AI Assistant", student: "Priya Reddy", progress: 65, status: "Needs Attention" },
-    { name: "Smart Campus System", student: "Arjun Kumar", progress: 40, status: "On Track" }
-  ];
+  if (error) return <div className="notice-error">{error}</div>;
+  if (!data) return <Loading />;
+
+  const { metrics, tickets, projects, students } = data;
+  const waiting = tickets.filter((t) => t.kind === 'ticket');
+  const fyis = tickets.filter((t) => t.kind === 'fyi');
+  const deflection = metrics.deflection_rate == null ? '–' : `${Math.round(metrics.deflection_rate * 100)}%`;
+  // Students who most likely need a human: open tickets first, then overdue work, then repeated struggles
+  const attention = [...students]
+    .map((s) => ({ ...s, weight: s.open_tickets * 5 + s.tasks.overdue * 2 + s.struggles.reduce((n, x) => n + x.count, 0) }))
+    .filter((s) => s.weight > 0)
+    .sort((a, b) => b.weight - a.weight)
+    .slice(0, 5);
+
+  const subtitle = waiting.length
+    ? `${waiting.length} student${waiting.length > 1 ? 's are' : ' is'} waiting for your answer. Each one has a draft ready.`
+    : 'Nobody is waiting on you. The AI mentor is handling the rest.';
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
-      {/* Top Banner / Greeting Header matching Barabari theme */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexWrap: "wrap",
-          gap: "1rem"
-        }}
-      >
-        <div>
-          <h1 style={{ fontSize: "1.85rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.02em" }}>
-            Good evening, Dr. Arun Kumar! 👋
-          </h1>
-          <p style={{ fontSize: "0.95rem", color: "#64748b", marginTop: "4px" }}>
-            Monitor student progress, projects, and escalations. Small steps make big progress.
-          </p>
-        </div>
+    <>
+      <PageHeader title={`Hello, ${user.name.split(' ')[0]}`} subtitle={subtitle} />
 
-        <button
-          onClick={() => navigate("/mentor/escalations")}
-          className="btn-brand"
+      <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '12px' }}>
+        <StatTile
+          icon={LifeBuoy}
+          tone={waiting.length ? 'accent' : 'primary'}
+          label="Waiting for you"
+          value={waiting.length}
+          hint={waiting.length ? `Oldest has waited ${waitingFor(waiting[waiting.length - 1].created_at)}` : 'All caught up'}
+          onClick={() => navigate('/mentor/escalations')}
+        />
+        <StatTile
+          icon={ShieldCheck}
+          label="Handled without you"
+          value={deflection}
+          hint={metrics.questions ? `${metrics.questions - metrics.escalated} of ${metrics.questions} questions` : 'No questions asked yet'}
+        />
+        <StatTile
+          icon={GraduationCap}
+          label="Your past answers reused"
+          value={metrics.answered_from_kb}
+          hint={`${metrics.redirected_to_client} more sent to the client`}
+        />
+        <StatTile
+          icon={Timer}
+          label="Your time per ticket"
+          value={metrics.mentor_minutes_per_ticket == null ? '–' : `${metrics.mentor_minutes_per_ticket} min`}
+          hint={metrics.tickets_resolved ? `${metrics.tickets_resolved} resolved so far` : 'Shows after your first answer'}
+        />
+      </div>
+
+      {/* Cards in the same row share one height, so the bottoms line up */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: '12px', alignItems: 'stretch' }}>
+        <SectionCard
+          flush
+          title="Waiting for you"
+          hint="Each one comes with the chat, the project context and a draft answer"
+          action={<TextLink onClick={() => navigate('/mentor/escalations')}>See all</TextLink>}
         >
-          <Sparkles size={16} />
-          View Escalations
-        </button>
-      </div>
-
-      {/* 5 Statistics Cards */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-          gap: "1.25rem"
-        }}
-      >
-        <StatCard
-          title="Total Students"
-          value={mentorStats.totalStudents}
-          subtitle="Assigned to you"
-          icon={Users}
-          color="#064e3b"
-          bgColor="#e6f4ea"
-        />
-        <StatCard
-          title="Active Projects"
-          value={mentorStats.activeProjects}
-          subtitle="In progress"
-          icon={FolderGit2}
-          color="#0369a1"
-          bgColor="#e0f2fe"
-        />
-        <StatCard
-          title="Completed Projects"
-          value={mentorStats.completedProjects}
-          subtitle="Successfully delivered"
-          icon={CheckCircle2}
-          color="#15803d"
-          bgColor="#dcfce7"
-        />
-        <StatCard
-          title="Completion Rate"
-          value={mentorStats.completionRate}
-          subtitle="Average progress"
-          icon={TrendingUp}
-          color="#7c3aed"
-          bgColor="#f3e8ff"
-        />
-        <StatCard
-          title="Pending Escalations"
-          value={mentorStats.pendingEscalations}
-          subtitle="Action required"
-          icon={AlertTriangle}
-          color="#b91c1c"
-          bgColor="#fee2e2"
-        />
-      </div>
-
-      {/* Main Grid: Project Progress & Recent Escalations */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "2fr 1fr",
-          gap: "1.5rem"
-        }}
-        className="dashboard-main-grid"
-      >
-        {/* Left Column: Project Progress & Student Overview */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "1.75rem" }}>
-          {/* Project Progress Section */}
-          <div className="barabari-card">
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: "1.25rem",
-                paddingBottom: "0.75rem",
-                borderBottom: "1px solid #eaecf0"
-              }}
-            >
-              <h2 style={{ fontSize: "1.15rem", fontWeight: 700, color: "#0f172a" }}>
-                Project Progress
-              </h2>
-              <span style={{ fontSize: "0.8rem", color: "#64748b", fontWeight: 500 }}>
-                Active Sprints
-              </span>
+          {waiting.length === 0 ? (
+            <EmptyState icon={Inbox}>All caught up. New escalations appear here as they come in.</EmptyState>
+          ) : (
+            <div className="stagger" style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              {waiting.slice(0, 5).map((t) => <TicketRow key={t.id} ticket={t} compact />)}
             </div>
+          )}
+        </SectionCard>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-              {projectProgressList.map((item, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    padding: "1rem",
-                    backgroundColor: "#f8faf9",
-                    borderRadius: "12px",
-                    border: "1px solid #eaecf0"
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginBottom: "0.5rem"
-                    }}
-                  >
-                    <div>
-                      <span style={{ fontWeight: 700, fontSize: "0.95rem", color: "#0f172a" }}>
-                        {item.name}
-                      </span>
-                      <span style={{ fontSize: "0.8rem", color: "#64748b", marginLeft: "8px" }}>
-                        Student: <strong style={{ color: "#064e3b" }}>{item.student}</strong>
-                      </span>
+        <SectionCard
+          flush
+          title="Students who may need you"
+          hint="Open tickets, late tasks, repeated struggles"
+          action={<TextLink onClick={() => navigate('/mentor/students')}>All students</TextLink>}
+        >
+          {attention.length === 0 ? (
+            <EmptyState icon={ShieldCheck}>Nobody stands out right now.</EmptyState>
+          ) : (
+            <div className="stagger" style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              {attention.map((s) => (
+                <button key={s.id} className="hover-row" onClick={() => navigate(`/mentor/students/${s.id}`)} style={{ display: 'flex', gap: '12px', alignItems: 'center', padding: '8px 12px', borderRadius: 'var(--radius-md)', textAlign: 'left' }}>
+                  <Avatar id={s.id} name={s.name} size={36} />
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 600 }}>{s.name}</div>
+                    <div style={{ fontSize: '0.76rem', color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {[
+                        s.open_tickets && `${s.open_tickets} open ticket${s.open_tickets > 1 ? 's' : ''}`,
+                        s.tasks.overdue && `${s.tasks.overdue} late task${s.tasks.overdue > 1 ? 's' : ''}`,
+                        s.struggles[0] && `keeps asking about ${s.struggles[0].topic}`
+                      ].filter(Boolean).join(' · ')}
                     </div>
-                    <span
-                      style={{
-                        fontSize: "0.75rem",
-                        fontWeight: 600,
-                        padding: "2px 8px",
-                        borderRadius: "9999px",
-                        backgroundColor: item.status === "On Track" ? "#e6f4ea" : "#fef3c7",
-                        color: item.status === "On Track" ? "#064e3b" : "#9a3412"
-                      }}
-                    >
-                      {item.status}
+                  </div>
+                  <ChevronRight size={15} color="var(--color-text-subtle)" style={{ flexShrink: 0 }} />
+                </button>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: '12px', alignItems: 'stretch' }}>
+        <SectionCard title="Your projects" hint="Task progress comes live from ClickUp">
+          <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px' }}>
+            {projects.map((p) => {
+              const left = daysLeft(p.deadline);
+              return (
+                <div key={p.id} style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'flex-start' }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: '0.92rem', fontWeight: 700 }}>{p.name}</div>
+                      <div style={{ fontSize: '0.76rem', color: 'var(--color-text-subtle)' }}>{p.client_name}</div>
+                    </div>
+                    <div style={{ display: 'flex' }}>
+                      {p.students.map((st, i) => (
+                        <button key={st.id} title={st.name} onClick={() => navigate(`/mentor/students/${st.id}`)} style={{ marginLeft: i ? '-8px' : 0, borderRadius: '50%' }}>
+                          <Avatar id={st.id} name={st.name} size={28} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.76rem', marginBottom: '6px' }}>
+                      <span style={{ color: 'var(--color-text-muted)' }}>{p.tasks.done} of {p.tasks.total} tasks done</span>
+                      <strong>{p.tasks.progress}%</strong>
+                    </div>
+                    <ProgressBar value={p.tasks.progress} />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginTop: 'auto' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: left != null && left < 14 ? 'var(--color-accent-strong)' : 'var(--color-text-subtle)' }}>
+                      <CalendarClock size={13} /> {left == null ? 'No deadline' : left >= 0 ? `${left} days left` : `${-left} days late`}
+                    </span>
+                    <span style={{ display: 'flex', gap: '6px' }}>
+                      {p.tasks.overdue > 0 && <Badge variant="orange">{p.tasks.overdue} late</Badge>}
+                      {p.open_tickets > 0 && <Badge variant="orange">{p.open_tickets} waiting</Badge>}
+                      {p.tasks.overdue === 0 && p.open_tickets === 0 && <Badge variant="green">On track</Badge>}
                     </span>
                   </div>
-                  <ProgressBar progress={item.progress} showText={true} height={8} />
                 </div>
-              ))}
-            </div>
+              );
+            })}
           </div>
+        </SectionCard>
 
-          {/* Student Overview Section */}
-          <div className="barabari-card">
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: "1rem"
-              }}
-            >
-              <div>
-                <h2 style={{ fontSize: "1.15rem", fontWeight: 700, color: "#0f172a" }}>
-                  Student Overview
-                </h2>
-                <p style={{ fontSize: "0.8rem", color: "#64748b" }}>
-                  Click a student to view full details
-                </p>
-              </div>
-              <button
-                onClick={() => navigate("/mentor/students")}
-                className="btn-outline"
-                style={{ padding: "0.4rem 0.85rem", fontSize: "0.8rem" }}
-              >
-                View All
-                <ArrowRight size={14} />
-              </button>
+        <SectionCard flush title="Good to know" hint="Sensitive topics the AI already answered. No reply needed.">
+          {fyis.length === 0 ? (
+            <EmptyState icon={Info}>Nothing to flag.</EmptyState>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              {fyis.slice(0, 4).map((t) => <TicketRow key={t.id} ticket={t} compact />)}
             </div>
-
-            <StudentTable students={initialStudents} />
-          </div>
-        </div>
-
-        {/* Right Column: Recent Escalations */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-          <div className="barabari-card">
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: "1rem",
-                paddingBottom: "0.75rem",
-                borderBottom: "1px solid #eaecf0"
-              }}
-            >
-              <h2 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#0f172a", display: "flex", alignItems: "center", gap: "6px" }}>
-                <AlertTriangle size={18} color="#b91c1c" />
-                Recent Escalations
-              </h2>
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-              {recentEscalations.map((esc) => (
-                <EscalationCard key={esc.id} escalation={esc} />
-              ))}
-            </div>
-
-            <button
-              onClick={() => navigate("/mentor/escalations")}
-              className="btn-outline"
-              style={{
-                width: "100%",
-                justifyContent: "center",
-                marginTop: "1rem",
-                padding: "0.65rem",
-                fontSize: "0.85rem"
-              }}
-            >
-              View all escalations
-              <ArrowRight size={16} />
-            </button>
-          </div>
-        </div>
+          )}
+        </SectionCard>
       </div>
-
-      <style>{`
-        @media (max-width: 1024px) {
-          .dashboard-main-grid {
-            grid-template-columns: 1fr !important;
-          }
-        }
-      `}</style>
-    </div>
+    </>
   );
 }

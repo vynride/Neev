@@ -9,12 +9,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.agent import mentor
 from app.agent.mentor import MentorReply
 from app.models import Project, User
-from app.services import escalation, memory, sessions
+from app.services import escalation, memory, sessions, shared_answers
 
 ESCALATED_MESSAGE = (
     "I have sent this to your mentor, {mentor}, with your question, what we tried and the "
     "relevant project context, so you will not need to explain it again. "
     "Their reply will appear here in this chat."
+)
+REVIEW_MESSAGE = (
+    "Thank you, that helps everyone who asks this later. I have sent your question, that answer "
+    "and what you said was wrong to your mentor, {mentor}. Their reply will appear here, and it "
+    "will replace the saved answer for other students."
 )
 KB_MESSAGE = "Your mentor answered a very similar question before. Here is what they said:\n\n{a}"
 
@@ -33,12 +38,16 @@ def _response(session_id: str, turn: dict, reply: MentorReply | None, **override
         "ticket_id": None,
         "grounded": reply.grounded if reply else False,
         "attempt": turn.get("attempt", 1),
+        "from_shared": False,
+        "reviewed_by": None,
     }
     base.update(overrides)
     return base
 
 
-async def _save_reply(session_id: str, question: str, reply: MentorReply, attempt: int) -> dict:
+async def _save_reply(
+    session_id: str, question: str, reply: MentorReply, attempt: int, **extra
+) -> dict:
     return await sessions.append_turn(
         session_id,
         {
@@ -56,6 +65,7 @@ async def _save_reply(session_id: str, question: str, reply: MentorReply, attemp
             "excerpts": reply.excerpts,
             "tool_calls": reply.tool_calls,
             "resolved": None,
+            **extra,
         },
     )
 
@@ -141,6 +151,25 @@ async def ask(
     await sessions.append_turn(session["_id"], {"role": "student", "content": message})
     await escalation.record(db, "question", project.id, student.id)
 
+    # A general question someone has asked before is served from the shared answers, and the
+    # mentor agent never runs. Spoken questions need a short spoken answer, so they skip this.
+    plain = not voice and not extra_context
+    hit = await shared_answers.find(db, message) if plain else None
+    if hit:
+        await escalation.record(db, "shared_hit", project.id, student.id)
+        reply = shared_answers.as_reply(hit)
+        turn = await _save_reply(
+            session["_id"],
+            message,
+            reply,
+            attempt=1,
+            shared_id=hit.entry.id,
+            reviewed_by=reply.reviewed_by,
+        )
+        return _response(
+            session["_id"], turn, reply, from_shared=True, reviewed_by=reply.reviewed_by
+        )
+
     reply = await mentor.answer(
         db,
         project=project,
@@ -187,13 +216,78 @@ async def ask(
         await memory.note_struggle(student.id, reply.category, reply.struggle_topic)
 
     turn = await _save_reply(session["_id"], message, reply, attempt=1)
+    # Only the opening question of a chat is stored: later ones can lean on what came before
+    if plain and not history:
+        await shared_answers.store(db, message, reply, project=project, student=student)
     return _response(session["_id"], turn, reply)
 
 
+async def _review_shared(
+    db: AsyncSession, *, student: User, project: Project, session: dict, turn: dict, reason: str
+) -> dict:
+    """A saved answer did not help: the mentor checks it, and their answer replaces it."""
+    question = turn.get("question", "")
+    tried = (
+        "This answer is saved and shown to every student who asks this general question. "
+        f"{student.name.split()[0]} marked it as not helpful.\n\n"
+        f"What she said was wrong:\n{reason or 'She did not say.'}\n\n"
+        "Your answer will go to her, and will replace the saved answer for everyone, so keep "
+        "it general."
+    )
+    ticket = await escalation.create_ticket(
+        db,
+        kind="ticket",
+        project_id=project.id,
+        student_id=student.id,
+        session_id=session["_id"],
+        category=turn.get("category") or "development_debugging",
+        question=question,
+        tried=tried,
+        draft_answer=turn["content"],
+        excerpts=[],
+    )
+    await shared_answers.hold_for_review(db, turn["shared_id"], ticket.id)
+    mentor_user = await db.get(User, ticket.mentor_id)
+    text = REVIEW_MESSAGE.format(mentor=mentor_user.name if mentor_user else "your mentor")
+    new_turn = await sessions.append_turn(
+        session["_id"],
+        {
+            "role": "assistant",
+            "content": text,
+            "question": question,
+            "attempt": 3,
+            "category": turn.get("category"),
+            "next_action": "escalated",
+            "ticket_id": ticket.id,
+        },
+    )
+    return _response(
+        session["_id"],
+        new_turn,
+        None,
+        category=turn.get("category"),
+        next_action="escalated",
+        ticket_id=ticket.id,
+    )
+
+
 async def feedback(
-    db: AsyncSession, *, student: User, project: Project, session: dict, turn: dict, resolved: bool
+    db: AsyncSession,
+    *,
+    student: User,
+    project: Project,
+    session: dict,
+    turn: dict,
+    resolved: bool,
+    reason: str = "",
 ) -> dict:
     await sessions.mark_resolved(session["_id"], turn["id"], resolved)
+    if turn.get("shared_id"):
+        await shared_answers.feedback(db, turn["shared_id"], resolved)
+        if not resolved:
+            return await _review_shared(
+                db, student=student, project=project, session=session, turn=turn, reason=reason
+            )
     if resolved:
         return {"session_id": session["_id"], "message_id": turn["id"], "next_action": "resolved"}
 

@@ -25,6 +25,8 @@ class ChatIn(BaseModel):
 
 class FeedbackIn(BaseModel):
     resolved: bool
+    # What was wrong, asked for when a saved answer is rejected
+    reason: str = Field(default="", max_length=2000)
 
 
 async def _refresh_repo(project_id: str) -> None:
@@ -72,7 +74,13 @@ async def post_feedback(
         raise HTTPException(400, "Feedback applies to AI mentor answers only")
     project = await get_project_for(user, session["project_id"], db)
     return await chat.feedback(
-        db, student=user, project=project, session=session, turn=turn, resolved=body.resolved
+        db,
+        student=user,
+        project=project,
+        session=session,
+        turn=turn,
+        resolved=body.resolved,
+        reason=body.reason.strip(),
     )
 
 

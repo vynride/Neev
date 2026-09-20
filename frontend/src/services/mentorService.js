@@ -14,8 +14,9 @@ export const mentorService = {
   },
 
   // resolved=false gets one retry from the AI, then a mentor ticket (or a past mentor answer)
-  async sendFeedback(messageId, resolved) {
-    return (await apiClient.post(`/api/chat/${messageId}/feedback`, { resolved })).data;
+  // A rejected saved ("Fast") answer goes to the mentor for review, with the student's reason
+  async sendFeedback(messageId, resolved, reason = '') {
+    return (await apiClient.post(`/api/chat/${messageId}/feedback`, { resolved, reason })).data;
   },
 
   async getSession(sessionId) {

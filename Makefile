@@ -1,4 +1,4 @@
-.PHONY: hooks db dev seed ingest check smoke
+.PHONY: hooks db dev seed ingest demo check smoke
 
 # Install the repo's git hooks (run once after cloning)
 hooks:
@@ -31,3 +31,7 @@ check:
 # Demo path against a running server with real models
 smoke:
 	cd backend && uv run python -m scripts.smoke
+
+# A fortnight of realistic chats, tickets and metrics, so the demo does not start empty
+demo:
+	cd backend && uv run python -W ignore -m scripts.demo_activity $(ARGS)

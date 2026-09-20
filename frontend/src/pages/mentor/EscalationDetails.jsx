@@ -1,267 +1,191 @@
-import React, { useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Send, CheckCircle, Clock, User, ShieldCheck } from "lucide-react";
-import StatusBadge from "../../components/mentor/StatusBadge";
-import ProgressBar from "../../components/mentor/ProgressBar";
-import ChatHistory from "../../components/mentor/ChatHistory";
-import { initialEscalations } from "../../data/mentorData";
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, Send, CheckCircle2, Info, Sparkles } from 'lucide-react';
+import { SectionCard, Loading } from '../../components/ui/Bits';
+import { Badge } from '../../components/ui/Card';
+import { Button } from '../../components/ui/Button';
+import { Avatar } from '../../components/ui/Avatar';
+import { Markdown } from '../../components/ui/Markdown';
+import { TICKETS_CHANGED } from './MentorLayout';
+import { mentorDeskService } from '../../services/mentorDeskService';
+import { errorMessage } from '../../services/apiClient';
+import { categoryLabel, formatDate, formatTime } from '../../services/format';
+import { useAuth } from '../../context/AuthContext';
 
 export default function EscalationDetails() {
   const { id } = useParams();
+  const { user } = useAuth();
   const navigate = useNavigate();
+  const [ticket, setTicket] = useState(null);
+  const [answer, setAnswer] = useState('');
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState('');
 
-  // Find escalation from mock data
-  const initialTicket =
-    initialEscalations.find((e) => e.id === id) || initialEscalations[0];
+  useEffect(() => {
+    mentorDeskService
+      .getTicket(id)
+      .then((t) => {
+        setTicket(t);
+        // Start from the AI's draft, so approving it is one click
+        setAnswer(t.final_answer || (t.kind === 'ticket' ? t.draft_answer : ''));
+      })
+      .catch((err) => setError(errorMessage(err)));
+  }, [id]);
 
-  const [escalation, setEscalation] = useState(initialTicket);
-  const [responseText, setResponseText] = useState("");
-
-  if (!escalation) {
-    return (
-      <div style={{ padding: "2rem", textAlign: "center" }}>
-        <h2>Escalation Ticket Not Found</h2>
-        <Link to="/mentor/escalations" className="btn-brand" style={{ marginTop: "1rem" }}>
-          Back to Escalations
-        </Link>
-      </div>
-    );
-  }
-
-  // Handle adding response to chat history
-  const handleSendResponse = (e) => {
-    e.preventDefault();
-    if (!responseText.trim()) return;
-
-    const newMessage = {
-      id: Date.now(),
-      sender: "Mentor",
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      text: responseText.trim()
-    };
-
-    setEscalation((prev) => ({
-      ...prev,
-      chatHistory: [...prev.chatHistory, newMessage]
-    }));
-
-    setResponseText("");
+  const handleResolve = async () => {
+    setSending(true);
+    setError('');
+    try {
+      await mentorDeskService.resolve(ticket.id, answer.trim() || 'Noted.');
+      window.dispatchEvent(new Event(TICKETS_CHANGED));
+      navigate('/mentor/escalations');
+    } catch (err) {
+      setError(errorMessage(err));
+      setSending(false);
+    }
   };
 
-  // Handle status updates
-  const handleUpdateStatus = (newStatus) => {
-    setEscalation((prev) => ({
-      ...prev,
-      status: newStatus
-    }));
-  };
+  const back = (
+    <button onClick={() => navigate('/mentor/escalations')} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.84rem', fontWeight: 600, color: 'var(--color-text-muted)', width: 'fit-content' }}>
+      <ArrowLeft size={15} /> All escalations
+    </button>
+  );
+
+  if (error && !ticket) return <>{back}<div className="notice-error">{error}</div></>;
+  if (!ticket) return <Loading />;
+
+  const isFyi = ticket.kind === 'fyi';
+  const canResolve = ticket.status === 'open' && user.role === 'mentor';
+  const usingDraft = answer.trim() === (ticket.draft_answer || '').trim();
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-      {/* Back Button & Top Action */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <button
-          onClick={() => navigate("/mentor/escalations")}
-          className="btn-outline"
-          style={{ padding: "0.5rem 1rem" }}
-        >
-          <ArrowLeft size={16} />
-          Back to Escalations
-        </button>
-
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <StatusBadge priority={escalation.priority} />
-          <StatusBadge status={escalation.status} />
-        </div>
-      </div>
-
-      {/* Main Grid: Left Student & Problem Details, Right Chat History & Response */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1.2fr",
-          gap: "1.5rem"
-        }}
-        className="escalation-detail-grid"
-      >
-        {/* Left Column: Student Context & Problem Details */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-          {/* Student Context Card */}
-          <div className="barabari-card">
-            <h3 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#0f172a", marginBottom: "1rem", paddingBottom: "0.5rem", borderBottom: "1px solid #eaecf0" }}>
-              Student Context
-            </h3>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: "0.85rem", color: "#64748b" }}>Student Name</span>
-                <span style={{ fontWeight: 700, color: "#064e3b" }}>{escalation.studentName}</span>
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: "0.85rem", color: "#64748b" }}>Student ID</span>
-                <span style={{ fontWeight: 600, color: "#0f172a" }}>{escalation.studentCode}</span>
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: "0.85rem", color: "#64748b" }}>Email</span>
-                <span style={{ fontWeight: 500, color: "#0f172a" }}>{escalation.studentEmail}</span>
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: "0.85rem", color: "#64748b" }}>Current Semester</span>
-                <span style={{ fontWeight: 600, color: "#0f172a" }}>Semester {escalation.semester}</span>
-              </div>
-
-              <div style={{ height: "1px", backgroundColor: "#f1f5f9", margin: "0.25rem 0" }} />
-
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: "0.85rem", color: "#64748b" }}>Project</span>
-                <span style={{ fontWeight: 700, color: "#0f172a" }}>{escalation.projectName}</span>
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: "0.85rem", color: "#64748b" }}>Project Status</span>
-                <StatusBadge status={escalation.projectStatus} />
-              </div>
-
-              <div style={{ marginTop: "0.5rem" }}>
-                <ProgressBar progress={escalation.projectCompletion} showText={true} />
-              </div>
-
-              {/* Tech Stack Badges */}
-              {escalation.techStack && (
-                <div style={{ marginTop: "0.75rem" }}>
-                  <div style={{ fontSize: "0.8rem", color: "#64748b", fontWeight: 600, marginBottom: "0.35rem" }}>
-                    Tech Stack
-                  </div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem" }}>
-                    {escalation.techStack.map((tech) => (
-                      <span
-                        key={tech}
-                        style={{
-                          fontSize: "0.75rem",
-                          fontWeight: 600,
-                          backgroundColor: "#e6f4ea",
-                          color: "#064e3b",
-                          padding: "0.2rem 0.6rem",
-                          borderRadius: "9999px"
-                        }}
-                      >
-                        {tech}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Problem Details Card */}
-          <div className="barabari-card">
-            <h3 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#0f172a", marginBottom: "0.75rem" }}>
-              Problem Details
-            </h3>
-
-            <h4 style={{ fontSize: "1.15rem", fontWeight: 800, color: "#064e3b", marginBottom: "0.5rem" }}>
-              {escalation.title}
-            </h4>
-
-            <div style={{ display: "flex", alignItems: "center", gap: "1rem", fontSize: "0.8rem", color: "#64748b", marginBottom: "1rem" }}>
-              <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                <Clock size={14} /> Created: {escalation.created}
+    <>
+      {back}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.9fr) minmax(300px, 1fr)', gap: '12px', alignItems: 'start' }}>
+        {/* Main column: the question and the answer */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div className="card" style={{ padding: '22px 24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
+              <Badge variant={isFyi ? 'blue' : ticket.status === 'open' ? 'orange' : 'green'}>
+                {isFyi ? 'FYI' : ticket.status === 'open' ? 'Needs your answer' : 'Resolved'}
+              </Badge>
+              <Badge variant="gray">{categoryLabel(ticket.category)}</Badge>
+              <span style={{ fontSize: '0.76rem', color: 'var(--color-text-subtle)' }}>
+                {formatDate(ticket.created_at)}, {formatTime(ticket.created_at)}
               </span>
             </div>
-
-            <div style={{ backgroundColor: "#f8faf9", padding: "1rem", borderRadius: "12px", border: "1px solid #eaecf0" }}>
-              <p style={{ fontSize: "0.9rem", color: "#334155", lineHeight: "1.6" }}>
-                {escalation.description}
-              </p>
-            </div>
+            <h1 style={{ fontSize: '1.2rem', fontWeight: 700, lineHeight: 1.45, letterSpacing: '-0.01em', whiteSpace: 'pre-wrap' }}>{ticket.question}</h1>
+            {ticket.tried && (
+              <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--color-border-subtle)' }}>
+                <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-text-subtle)', marginBottom: '6px' }}>
+                  {isFyi ? 'Why you are seeing this' : ticket.shared_review ? 'Why this needs you' : 'What was tried'}
+                </div>
+                <div style={{ fontSize: '0.86rem', whiteSpace: 'pre-wrap', color: 'var(--color-text-muted)', maxHeight: '200px', overflowY: 'auto' }}>{ticket.tried}</div>
+              </div>
+            )}
           </div>
+
+          {isFyi && (
+            <div style={{ display: 'flex', gap: '10px', padding: '12px 16px', borderRadius: 'var(--radius-md)', background: 'var(--color-info-subtle)', fontSize: '0.85rem', color: 'var(--color-info)' }}>
+              <Info size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
+              The AI mentor already answered the student. Nothing is blocked. This is only so you know.
+            </div>
+          )}
+
+          {canResolve ? (
+            <SectionCard
+              title={isFyi ? 'Add a note (optional)' : 'Your answer'}
+              hint={isFyi ? undefined : 'It appears in the student’s chat and is saved, so the same question is not escalated again.'}
+            >
+              {!isFyi && (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.76rem', color: 'var(--color-primary)', fontWeight: 600, marginBottom: '8px' }}>
+                  <Sparkles size={13} /> {ticket.shared_review ? (usingDraft ? 'This is the saved answer she rejected. Correct it: your version goes to her and to every student who asks this.' : 'Your version will replace the saved answer for every student.') : usingDraft ? 'This is the AI’s draft. Approve it, edit it or rewrite it.' : 'Edited from the AI’s draft.'}
+                </div>
+              )}
+              <textarea
+                rows={isFyi ? 3 : 12}
+                value={answer}
+                onChange={(e) => setAnswer(e.target.value)}
+                style={{ width: '100%', padding: '12px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border-strong)', fontSize: '0.9rem', lineHeight: 1.6, resize: 'vertical', outline: 'none' }}
+              />
+              {error && <div className="notice-error" style={{ marginTop: '10px' }}>{error}</div>}
+              <div style={{ display: 'flex', gap: '10px', marginTop: '12px', flexWrap: 'wrap' }}>
+                <Button variant="primary" icon={isFyi ? CheckCircle2 : Send} onClick={handleResolve} disabled={sending || (!isFyi && !answer.trim())}>
+                  {sending ? 'Sending…' : isFyi ? 'Mark as seen' : ticket.shared_review ? (usingDraft ? 'Keep this answer' : 'Send and update for everyone') : usingDraft ? 'Approve and send' : 'Send answer'}
+                </Button>
+                {!isFyi && !usingDraft && (
+                  <Button variant="outline" onClick={() => setAnswer(ticket.draft_answer)}>Back to the draft</Button>
+                )}
+              </div>
+            </SectionCard>
+          ) : (
+            ticket.final_answer && (
+              <SectionCard title="Answer sent" hint={ticket.resolved_at ? `${formatDate(ticket.resolved_at)}, ${formatTime(ticket.resolved_at)}` : undefined}>
+                <Markdown>{ticket.final_answer}</Markdown>
+              </SectionCard>
+            )
+          )}
+
+          <SectionCard title="The student’s chat" hint="Everything said before this reached you">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', maxHeight: '520px', overflowY: 'auto', paddingRight: '6px' }}>
+              {ticket.chat.map((turn, idx) => (
+                turn.role === 'student' ? (
+                  <div key={idx} style={{ alignSelf: 'flex-end', maxWidth: '80%', background: 'var(--color-primary)', color: '#FFFFFF', borderRadius: '16px 16px 4px 16px', padding: '9px 14px', fontSize: '0.88rem', whiteSpace: 'pre-wrap' }}>
+                    {turn.content}
+                  </div>
+                ) : (
+                  <div key={idx} style={{ maxWidth: '92%' }}>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 700, color: turn.role === 'mentor' ? 'var(--color-accent-strong)' : 'var(--color-text-subtle)', marginBottom: '4px' }}>
+                      {turn.role === 'mentor' ? 'Mentor' : 'AI mentor'} · {formatTime(turn.created_at)}
+                    </div>
+                    <Markdown>{turn.content}</Markdown>
+                  </div>
+                )
+              ))}
+            </div>
+          </SectionCard>
         </div>
 
-        {/* Right Column: Chat History & Mentor Response */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-          {/* Chat History Section */}
-          <div className="barabari-card">
-            <h3 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#0f172a", marginBottom: "1rem" }}>
-              Student Chat History
-            </h3>
-
-            <ChatHistory messages={escalation.chatHistory || []} />
-          </div>
-
-          {/* Mentor Response & Status Actions */}
-          <div className="barabari-card">
-            <h3 style={{ fontSize: "1.05rem", fontWeight: 700, color: "#0f172a", marginBottom: "0.75rem" }}>
-              Mentor Action & Response
-            </h3>
-
-            {/* Response Form */}
-            <form onSubmit={handleSendResponse} style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
-              <textarea
-                value={responseText}
-                onChange={(e) => setResponseText(e.target.value)}
-                placeholder="Add mentor response..."
-                rows={4}
-                style={{
-                  width: "100%",
-                  padding: "0.85rem",
-                  borderRadius: "12px",
-                  border: "1px solid #eaecf0",
-                  fontSize: "0.875rem",
-                  outline: "none",
-                  fontFamily: "inherit",
-                  resize: "vertical"
-                }}
-                id="mentor-response-textarea"
-              />
-
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.75rem" }}>
-                <button type="submit" className="btn-brand">
-                  <Send size={16} />
-                  Send Response
-                </button>
-
-                {/* Status Toggle Buttons */}
-                <div style={{ display: "flex", gap: "0.5rem" }}>
-                  {escalation.status !== "IN PROGRESS" && (
-                    <button
-                      type="button"
-                      onClick={() => handleUpdateStatus("IN PROGRESS")}
-                      className="btn-outline"
-                      style={{ padding: "0.5rem 0.85rem", fontSize: "0.8rem", color: "#0369a1" }}
-                    >
-                      Mark as In Progress
-                    </button>
-                  )}
-
-                  {escalation.status !== "RESOLVED" && (
-                    <button
-                      type="button"
-                      onClick={() => handleUpdateStatus("RESOLVED")}
-                      className="btn-outline"
-                      style={{ padding: "0.5rem 0.85rem", fontSize: "0.8rem", color: "#064e3b", backgroundColor: "#e6f4ea", borderColor: "#a7f3d0" }}
-                    >
-                      <CheckCircle size={14} />
-                      Resolve Escalation
-                    </button>
-                  )}
-                </div>
+        {/* Side rail: who, which project, what the AI looked at */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <SectionCard title="Student">
+            <button className="hover-row" onClick={() => navigate(`/mentor/students/${ticket.student.id}`)} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '6px', margin: '-6px', borderRadius: 'var(--radius-md)', textAlign: 'left' }}>
+              <Avatar id={ticket.student.id} name={ticket.student.name} size={44} />
+              <div>
+                <div style={{ fontSize: '0.92rem', fontWeight: 700 }}>{ticket.student.name}</div>
+                <div style={{ fontSize: '0.76rem', color: 'var(--color-primary)', fontWeight: 600 }}>Open profile</div>
               </div>
-            </form>
-          </div>
+            </button>
+            {ticket.student.memory && (
+              <details style={{ marginTop: '14px' }}>
+                <summary style={{ fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', color: 'var(--color-text-muted)' }}>What the AI knows about them</summary>
+                <div style={{ marginTop: '10px' }}><Markdown>{ticket.student.memory}</Markdown></div>
+              </details>
+            )}
+          </SectionCard>
+
+          <SectionCard title={ticket.project.name} hint="Project summary">
+            <div style={{ maxHeight: '300px', overflowY: 'auto', paddingRight: '6px' }}>
+              <Markdown>{ticket.project.card || 'No project summary yet.'}</Markdown>
+            </div>
+          </SectionCard>
+
+          {ticket.excerpts?.length > 0 && (
+            <SectionCard title="What the AI looked at" hint="Code, documents and calls it read for this question">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {ticket.excerpts.map((ex, idx) => (
+                  <details key={idx} style={{ padding: '8px 12px', borderRadius: 'var(--radius-md)', background: 'var(--bg-subtle)' }}>
+                    <summary style={{ fontSize: '0.76rem', fontWeight: 600, cursor: 'pointer', overflowWrap: 'anywhere', fontFamily: ex.type === 'code' ? 'var(--font-mono)' : undefined }}>
+                      {ex.ref || `Excerpt ${idx + 1}`}
+                    </summary>
+                    <pre style={{ fontSize: '0.74rem', whiteSpace: 'pre-wrap', marginTop: '8px', overflowWrap: 'anywhere', fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}>{ex.text}</pre>
+                  </details>
+                ))}
+              </div>
+            </SectionCard>
+          )}
         </div>
       </div>
-
-      <style>{`
-        @media (max-width: 1024px) {
-          .escalation-detail-grid {
-            grid-template-columns: 1fr !important;
-          }
-        }
-      `}</style>
-    </div>
+    </>
   );
 }

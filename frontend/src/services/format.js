@@ -20,14 +20,22 @@ export const STATUS_LABELS = {
 
 export const statusLabel = (key) => STATUS_LABELS[key] || key;
 
+// Timestamps from the chat log arrive without a timezone and are in UTC. Read them as UTC,
+// otherwise every chat time is off by the local offset (5.5 hours in India).
+const parseTime = (iso) => {
+  if (!iso) return new Date();
+  if (typeof iso !== 'string') return new Date(iso);
+  if (iso.length === 10) return new Date(`${iso}T00:00:00`);
+  return new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(iso) ? iso : `${iso}Z`);
+};
+
 export const formatDate = (iso) => {
   if (!iso) return 'Not set';
-  const d = new Date(iso.length === 10 ? `${iso}T00:00:00` : iso);
-  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  return parseTime(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
 export const formatTime = (iso) =>
-  new Date(iso || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  parseTime(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
 export const isOverdue = (task) =>
   task.status !== 'done' && task.due_date && task.due_date < new Date().toISOString().slice(0, 10);
@@ -39,7 +47,7 @@ export const titleCase = (key = '') =>
   key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
 export const relativeDay = (iso) => {
-  const d = new Date(iso);
+  const d = parseTime(iso);
   const days = Math.floor((new Date().setHours(0, 0, 0, 0) - new Date(d).setHours(0, 0, 0, 0)) / 86400000);
   if (days <= 0) return `Today, ${formatTime(iso)}`;
   if (days === 1) return 'Yesterday';
@@ -89,4 +97,24 @@ export const describeCitation = (c, project) => {
     };
   }
   return { label: titleCase(c.type), title: ref, detail: '', quote: c.snippet };
+};
+
+// "Due in 3 days" is easier to act on than a date
+export const dueLabel = (iso, done = false) => {
+  if (!iso) return 'No due date';
+  if (done) return `Was due ${formatDate(iso)}`;
+  const days = Math.round((new Date(`${iso.slice(0, 10)}T00:00:00`) - new Date().setHours(0, 0, 0, 0)) / 86400000);
+  if (days === 0) return 'Due today';
+  if (days === 1) return 'Due tomorrow';
+  if (days > 1 && days <= 14) return `Due in ${days} days`;
+  if (days === -1) return '1 day late';
+  if (days < -1) return `${-days} days late`;
+  return `Due ${formatDate(iso)}`;
+};
+
+export const waitingFor = (iso) => {
+  const mins = Math.max(0, Math.round((Date.now() - parseTime(iso)) / 60000));
+  if (mins < 60) return `${mins || 1} min`;
+  if (mins < 60 * 24) return `${Math.round(mins / 60)} h`;
+  return `${Math.round(mins / 1440)} d`;
 };
