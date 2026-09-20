@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
-import { ArrowUp, LifeBuoy, Mic, Phone, Square, Volume2, X } from 'lucide-react';
+import { ArrowUp, ArrowUpRight, CalendarCheck, ListTodo, Boxes, MessagesSquare, LifeBuoy, Mic, Phone, Square, Volume2, X } from 'lucide-react';
 import { EscalationModal } from '../components/escalation/EscalationModal';
 import { AiMessage } from '../components/chat/AiMessage';
 import { Thinking } from '../components/chat/Thinking';
@@ -13,16 +13,43 @@ import { projectService } from '../services/projectService';
 import { voiceService, guessLanguage, audioUrl } from '../services/voiceService';
 import { useRecorder, canRecord } from '../hooks/useRecorder';
 import { errorMessage } from '../services/apiClient';
-import { formatTime } from '../services/format';
+import { formatTime, isOverdue, dueLabel } from '../services/format';
 import { useAuth } from '../context/AuthContext';
 
 const POLL_MS = 8000;
 
-const STARTERS = [
-  { title: 'My week', text: 'What is pending for me this week, and what is overdue?' },
-  { title: 'The codebase', text: 'Explain how the main parts of this codebase fit together, with a diagram.' },
-  { title: 'A tricky client', text: 'The client asked for something outside the agreed scope. How do I respond?' }
-];
+const greeting = () => {
+  const hour = new Date().getHours();
+  return hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+};
+
+// Openers built from her own week, so the first question is never a blank page
+const startersFor = (project, userId) => {
+  const open = (project?.tasks || []).filter((t) => t.assignee_id === userId && t.status !== 'done');
+  const late = open.filter(isOverdue).length;
+  const next = open.find((t) => t.due_date) || open[0];
+  const call = project?.meetings?.[project.meetings.length - 1];
+  return [
+    {
+      icon: CalendarCheck,
+      text: 'What should I work on this week?',
+      hint: open.length ? `${open.length} open ${open.length === 1 ? 'task' : 'tasks'}${late ? `, ${late} late` : ''}` : 'Your tasks and deadlines'
+    },
+    next && {
+      icon: ListTodo,
+      text: `How should I approach “${next.name}”?`,
+      hint: dueLabel(next.due_date)
+    },
+    {
+      icon: Boxes,
+      text: 'Walk me through how this codebase fits together.',
+      hint: 'With a diagram of the main parts'
+    },
+    call
+      ? { icon: MessagesSquare, text: `What did the client decide in “${call.title}”, and what is still unclear?`, hint: 'From your latest client call' }
+      : { icon: MessagesSquare, text: 'The client asked for something outside the agreed scope. How do I respond?', hint: 'With a reply you can send' }
+  ].filter(Boolean);
+};
 
 // A turn from the session log -> a chat message
 const fromTurn = (t) => ({
@@ -39,7 +66,8 @@ const fromTurn = (t) => ({
   draft_client_message: t.draft_client_message,
   ticket_id: t.ticket_id,
   attempt: t.attempt,
-  resolved: t.resolved
+  resolved: t.resolved,
+  shared_id: t.shared_id
 });
 
 // A reply from POST /api/chat or the feedback endpoint -> a chat message
@@ -269,29 +297,32 @@ export const MentorChat = () => {
       <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
         <div style={{ padding: '28px clamp(28px, 5vw, 88px) 12px', display: 'flex', flexDirection: 'column', gap: '26px', minHeight: '100%' }}>
           {isEmpty && (
-            <div className="fade-enter" style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '22px', paddingBottom: '6vh' }}>
-              <div>
-                <h2 style={{ fontSize: '1.7rem', fontWeight: 700, letterSpacing: '-0.03em' }}>
-                  Hello {user.name.split(' ')[0]}, what are you working on?
+            <div className="fade-enter" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingBottom: '4vh' }}>
+              <div style={{ width: 'min(620px, 100%)' }}>
+                <img src="/logo.svg" alt="" style={{ width: '40px', height: '40px', marginBottom: '18px' }} />
+                <h2 style={{ fontSize: '1.9rem', fontWeight: 700, letterSpacing: '-0.035em', lineHeight: 1.15 }}>
+                  {greeting()}, {user.name.split(' ')[0]}.
+                  <span style={{ display: 'block', color: 'var(--color-text-subtle)', fontWeight: 600 }}>What are you working on?</span>
                 </h2>
-                <p style={{ fontSize: '0.95rem', color: 'var(--color-text-muted)', marginTop: '6px', maxWidth: '560px' }}>
-                  I know {project?.name || 'your project'}: the code, the documents, your client calls and your tasks.
+                <p style={{ fontSize: '0.92rem', color: 'var(--color-text-muted)', margin: '14px 0 26px', lineHeight: 1.6 }}>
+                  I have read {project?.name ? `${project.name}'s` : "your project's"} code, documents, client calls and your tasks.
+                  Ask in your own words{voiceEnabled ? ', or call me and talk it through' : ''}.
                 </p>
-              </div>
-              <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '12px' }}>
-                {STARTERS.map((s) => (
-                  <button
-                    key={s.title}
-                    onClick={() => handleSendMessage(s.text)}
-                    className="card is-clickable"
-                    style={{ padding: '14px 16px', textAlign: 'left' }}
-                  >
-                    <div style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--color-primary)', marginBottom: '4px' }}>
-                      {s.title}
-                    </div>
-                    <div style={{ fontSize: '0.86rem', color: 'var(--color-text-main)', lineHeight: 1.45 }}>{s.text}</div>
-                  </button>
-                ))}
+                <div style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-text-subtle)', marginBottom: '4px' }}>
+                  Start with
+                </div>
+                <div className="stagger">
+                  {startersFor(project, user.id).map((s) => (
+                    <button key={s.text} type="button" onClick={() => handleSendMessage(s.text)} className="starter-row">
+                      <s.icon size={17} strokeWidth={1.8} className="starter-icon" />
+                      <span style={{ minWidth: 0, flex: 1 }}>
+                        <span style={{ display: 'block', fontSize: '0.93rem', color: 'var(--color-text-main)', lineHeight: 1.4 }}>{s.text}</span>
+                        <span style={{ display: 'block', fontSize: '0.76rem', color: 'var(--color-text-subtle)', marginTop: '2px' }}>{s.hint}</span>
+                      </span>
+                      <ArrowUpRight size={16} className="starter-go" />
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           )}

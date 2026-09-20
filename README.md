@@ -5,6 +5,7 @@ AI mentor for Barabari Collective students working on freelance client projects.
 ## Docs
 
 - [`docs/design.md`](docs/design.md): decisions, architecture, API contract, data shapes
+- [`docs/scalability.md`](docs/scalability.md): shared answers for general questions, and how cost and mentor time stay flat as students grow
 - [`docs/build-log.md`](docs/build-log.md): what was built step by step, what was tested, what was measured
 - [`CONTEXT.md`](CONTEXT.md): glossary
 - [`docs/project-scope/`](docs/project-scope/): challenge statement, Q&A transcript, sample questions

@@ -333,3 +333,12 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
 .call-shimmer { background: linear-gradient(90deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.55) 40%, #FFFFFF 50%, rgba(255,255,255,0.55) 60%, rgba(255,255,255,0.55) 100%); background-size: 250% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shimmer 1.8s linear infinite; }
 @keyframes ring { from { opacity: 0.7; transform: scale(0.8); } to { opacity: 0; transform: scale(1.35); } }
 @media (prefers-reduced-motion: reduce) { .call-orb::before, .call-orb::after, .call-orb-core, .call-shimmer { animation: none !important; } .call-shimmer { color: #FFFFFF; background: none; } }
+
+/* Openers on the empty chat */
+.starter-row { display: flex; align-items: center; gap: 14px; width: 100%; padding: 13px 4px; text-align: left; border-top: 1px solid var(--color-border); transition: padding 180ms ease, background 180ms ease; border-radius: 0; }
+.starter-row:last-child { border-bottom: 1px solid var(--color-border); }
+.starter-row:hover { padding-left: 12px; padding-right: 8px; background: var(--color-primary-subtle); border-radius: 10px; border-color: transparent; }
+.starter-row:hover + .starter-row { border-top-color: transparent; }
+.starter-icon { color: var(--color-primary); flex-shrink: 0; }
+.starter-go { color: var(--color-primary); flex-shrink: 0; opacity: 0; transform: translate(-4px, 4px); transition: opacity 180ms ease, transform 180ms ease; }
+.starter-row:hover .starter-go { opacity: 1; transform: none; }

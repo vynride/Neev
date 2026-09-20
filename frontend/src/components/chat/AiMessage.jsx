@@ -58,6 +58,7 @@ const feedbackButton = {
 
 // One reply from the AI mentor, with its sources, links, client draft and feedback buttons
 export const AiMessage = ({ msg, project, isLatest, mentorReplied, onFeedback, feedbackBusy }) => {
+  const shared = msg.from_shared || !!msg.shared_id;
   const [copied, setCopied] = useState(false);
   // Only the newest reply can be rated; rating an older one would restart a finished thread
   const canGiveFeedback = isLatest && msg.next_action !== 'escalated' && msg.resolved == null && msg.message_id;
@@ -137,7 +138,9 @@ export const AiMessage = ({ msg, project, isLatest, mentorReplied, onFeedback, f
             )}
           </div>
           {msg.category && (
-            <span style={{ fontSize: '0.7rem', color: 'var(--color-text-subtle)' }}>{categoryLabel(msg.category)}</span>
+            <span style={{ fontSize: '0.7rem', color: 'var(--color-text-subtle)' }} title={shared ? 'Another student asked the same question, so this answer was ready. Say "No, try again" for a fresh one.' : undefined}>
+              {shared ? 'Asked before · answered instantly · ' : ''}{categoryLabel(msg.category)}
+            </span>
           )}
         </div>
       )}

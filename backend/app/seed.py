@@ -21,6 +21,7 @@ from app.models import (
     KBEntry,
     MetricEvent,
     Project,
+    SharedAnswer,
     StudentScore,
     Task,
     Ticket,
@@ -78,7 +79,9 @@ async def seed() -> None:
     kb = load(SEED_DIR / "kb.json")
 
     async with SessionLocal() as db:
-        for model in (MetricEvent, Ticket, Chunk, KBEntry, Task, Assignment, StudentScore):
+        for model in (
+            MetricEvent, Ticket, Chunk, KBEntry, SharedAnswer, Task, Assignment, StudentScore
+        ):  # fmt: skip
             await db.execute(delete(model))
         await db.execute(delete(Project))
         await db.execute(delete(User))

@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.agent import mentor
 from app.agent.mentor import MentorReply
 from app.models import Project, User
-from app.services import escalation, memory, sessions
+from app.services import escalation, memory, sessions, shared_answers
 
 ESCALATED_MESSAGE = (
     "I have sent this to your mentor, {mentor}, with your question, what we tried and the "
@@ -33,12 +33,15 @@ def _response(session_id: str, turn: dict, reply: MentorReply | None, **override
         "ticket_id": None,
         "grounded": reply.grounded if reply else False,
         "attempt": turn.get("attempt", 1),
+        "from_shared": False,
     }
     base.update(overrides)
     return base
 
 
-async def _save_reply(session_id: str, question: str, reply: MentorReply, attempt: int) -> dict:
+async def _save_reply(
+    session_id: str, question: str, reply: MentorReply, attempt: int, **extra
+) -> dict:
     return await sessions.append_turn(
         session_id,
         {
@@ -56,6 +59,7 @@ async def _save_reply(session_id: str, question: str, reply: MentorReply, attemp
             "excerpts": reply.excerpts,
             "tool_calls": reply.tool_calls,
             "resolved": None,
+            **extra,
         },
     )
 
@@ -141,6 +145,16 @@ async def ask(
     await sessions.append_turn(session["_id"], {"role": "student", "content": message})
     await escalation.record(db, "question", project.id, student.id)
 
+    # A general question someone has asked before is served from the shared answers, and the
+    # mentor agent never runs. Spoken questions need a short spoken answer, so they skip this.
+    plain = not voice and not extra_context
+    hit = await shared_answers.find(db, message) if plain else None
+    if hit:
+        await escalation.record(db, "shared_hit", project.id, student.id)
+        reply = shared_answers.as_reply(hit)
+        turn = await _save_reply(session["_id"], message, reply, attempt=1, shared_id=hit.entry.id)
+        return _response(session["_id"], turn, reply, from_shared=True)
+
     reply = await mentor.answer(
         db,
         project=project,
@@ -187,6 +201,9 @@ async def ask(
         await memory.note_struggle(student.id, reply.category, reply.struggle_topic)
 
     turn = await _save_reply(session["_id"], message, reply, attempt=1)
+    # Only the opening question of a chat is stored: later ones can lean on what came before
+    if plain and not history:
+        await shared_answers.store(db, message, reply, project=project, student=student)
     return _response(session["_id"], turn, reply)
 
 
@@ -194,6 +211,8 @@ async def feedback(
     db: AsyncSession, *, student: User, project: Project, session: dict, turn: dict, resolved: bool
 ) -> dict:
     await sessions.mark_resolved(session["_id"], turn["id"], resolved)
+    if turn.get("shared_id"):
+        await shared_answers.feedback(db, turn["shared_id"], resolved)
     if resolved:
         return {"session_id": session["_id"], "message_id": turn["id"], "next_action": "resolved"}
 

@@ -7,7 +7,13 @@ from dataclasses import dataclass, field
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agent.prompts import ANSWER_SCHEMA, CLASSIFY_SCHEMA, CLASSIFY_SYSTEM, build_system
+from app.agent.prompts import (
+    ANSWER_SCHEMA,
+    CLASSIFY_SCHEMA,
+    CLASSIFY_SYSTEM,
+    GENERAL_NOTE,
+    build_system,
+)
 from app.agent.tools import ToolContext, run_tool, tools_for
 from app.config import get_settings
 from app.db.mongo import PROJECT_MEMORY, STUDENT_MEMORY, get_mongo
@@ -40,6 +46,8 @@ class MentorReply:
     sensitive_reason: str | None = None
     struggle_topic: str | None = None
     wants_human: bool = False
+    # The part of a general answer that reads the same for any student; None otherwise
+    shareable: str | None = None
     excerpts: list[dict] = field(default_factory=list)
     tool_calls: list[dict] = field(default_factory=list)
 
@@ -125,6 +133,9 @@ async def answer(
     )
     if extra_context:
         system += "\n\n" + extra_context
+    general = route.scope == "generic" and not voice and not previous_answer
+    if general:
+        system += GENERAL_NOTE
     if route.scope == "project_specific":
         system += "\n\n# Repository map\n" + await run_tool(ctx, "repo_overview", {})
 
@@ -160,6 +171,10 @@ async def answer(
         data = {"next_action": "answered", "message": text or "I could not produce an answer."}
 
     citations, resources = _validate(data, ctx)
+    body = data.get("message", "")
+    note = (data.get("project_note") or "").strip()
+    if note:
+        data["message"] = f"{body}\n\n**In your project:** {note}"
     return MentorReply(
         category=route.category,
         scope=route.scope,
@@ -172,6 +187,7 @@ async def answer(
         sensitive_reason=data.get("sensitive_reason"),
         struggle_topic=data.get("struggle_topic"),
         wants_human=route.wants_human,
+        shareable=body if general else None,
         excerpts=ctx.excerpts[:8],
         tool_calls=ctx.calls,
     )

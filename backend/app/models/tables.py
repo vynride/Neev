@@ -111,6 +111,29 @@ class KBEntry(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class SharedAnswer(Base):
+    """An AI answer to a general question, reused for any student who asks the same thing.
+
+    A row with `alias_of` set is another wording of the same question: it carries its own
+    embedding and points at the row that holds the answer.
+    """
+
+    __tablename__ = "shared_answers"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    category: Mapped[str] = mapped_column(String)
+    question: Mapped[str] = mapped_column(Text)
+    answer: Mapped[str] = mapped_column(Text, default="")
+    resources: Mapped[list] = mapped_column(JSONB, default=list)
+    alias_of: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIM), nullable=True)
+    hits: Mapped[int] = mapped_column(Integer, default=0)
+    helped: Mapped[int] = mapped_column(Integer, default=0)
+    rejected: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class Chunk(Base):
     """A searchable piece of a project document or meeting transcript."""
 
@@ -129,7 +152,7 @@ class MetricEvent(Base):
     __tablename__ = "metric_events"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    # question | retry | ask_client | kb_hit | escalated | fyi
+    # question | retry | ask_client | kb_hit | shared_hit | escalated | fyi
     kind: Mapped[str] = mapped_column(String, index=True)
     project_id: Mapped[str] = mapped_column(String)
     student_id: Mapped[str] = mapped_column(String)

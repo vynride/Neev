@@ -125,6 +125,7 @@ async def metrics(db: AsyncSession, mentor_id: str | None = None) -> dict:
         "retries": counts.get("retry", 0),
         "redirected_to_client": counts.get("ask_client", 0),
         "answered_from_kb": counts.get("kb_hit", 0),
+        "answered_from_shared": counts.get("shared_hit", 0),
         "fyis": counts.get("fyi", 0),
         "tickets_resolved": len(resolved),
         "mentor_minutes_per_ticket": round(sum(minutes) / len(minutes), 1) if minutes else None,

@@ -107,6 +107,7 @@ Do not escalate because a question is hard. Try first.
 
 # Output
 Reply with the JSON object described by the schema. `message` is markdown for the student.
+`project_note` is null unless the general-question section below asks for it.
 `struggle_topic` is a 2-5 word label of the underlying skill gap if this question shows one
 (for example "JWT refresh flow"), otherwise null.
 
@@ -126,6 +127,18 @@ She marked your previous answer as not resolving her problem. Do not repeat it. 
 relevant code or documents, consider that you misunderstood the question, and take a different
 approach. Previous answer:
 {previous}
+"""
+
+GENERAL_NOTE = """
+
+# This is a general question
+It reads the same on any project, so `message` is shared with other students who ask the same
+thing. Write `message` as a standalone explanation of the concept that any of them could read:
+- no mention of this project, its client, her code, her tasks, her mentor or her;
+- no citations or [refs] in it, and no "project note" section inside it;
+- examples are fine, but generic ones, not taken from the project material.
+Everything that ties it to her project goes in `project_note` instead: one to three sentences
+that she alone will see, with its citations, or null if there is nothing useful to add.
 """
 
 VOICE_NOTE = """
@@ -181,6 +194,7 @@ ANSWER_SCHEMA = {
             "sensitive": {"type": "boolean"},
             "sensitive_reason": {"type": ["string", "null"]},
             "struggle_topic": {"type": ["string", "null"]},
+            "project_note": {"type": ["string", "null"]},
         },
         "required": [
             "next_action",
@@ -191,6 +205,7 @@ ANSWER_SCHEMA = {
             "sensitive",
             "sensitive_reason",
             "struggle_topic",
+            "project_note",
         ],
         "additionalProperties": False,
     },

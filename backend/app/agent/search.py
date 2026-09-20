@@ -26,11 +26,23 @@ def _or_tsquery(query: str) -> str:
     return " | ".join(words[:12])
 
 
+# One question is embedded by the shared answers lookup, the knowledge base search and the
+# document search. Remembering recent vectors makes that one call instead of three or four.
+_recent_vectors: dict[str, list[float]] = {}
+_RECENT_MAX = 256
+
+
 async def embed_or_none(query: str) -> list[float] | None:
     if not get_settings().openai_api_key:
         return None
+    if query in _recent_vectors:
+        return _recent_vectors[query]
     try:
-        return (await get_llm().embed([query]))[0]
+        vec = (await get_llm().embed([query]))[0]
+        if len(_recent_vectors) >= _RECENT_MAX:
+            _recent_vectors.pop(next(iter(_recent_vectors)))
+        _recent_vectors[query] = vec
+        return vec
     except Exception:  # noqa: BLE001  search must degrade to keyword-only, never fail the answer
         log.warning("Embedding the query failed; using keyword search only", exc_info=True)
         return None
