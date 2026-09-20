@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+import re
 from dataclasses import dataclass, field
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -101,6 +102,21 @@ def _validate(reply: dict, ctx: ToolContext) -> tuple[list[dict], list[dict]]:
     return citations, resources[:3]
 
 
+def _spoken(text: str, sentences: int = 2) -> str:
+    """A call is a back and forth: keep what is said to two sentences, whatever the model wrote."""
+    text = re.sub(r"[`*_#]", "", text)
+    parts = re.findall(r".+?(?:[.?!।]+(?=\s|$)|$)", text.strip(), flags=re.DOTALL)
+    kept, count = [], 0
+    for part in parts:
+        if count == sentences:
+            break
+        kept.append(part)
+        # "Okay." or "Right." is a reaction, not one of the two sentences
+        if len(part.strip()) > 12:
+            count += 1
+    return "".join(kept).strip()
+
+
 async def answer(
     db: AsyncSession,
     *,
@@ -173,6 +189,8 @@ async def answer(
         data = {"next_action": "answered", "message": text or "I could not produce an answer."}
 
     citations, resources = _validate(data, ctx)
+    if voice:
+        data["message"] = _spoken(data.get("message", ""))
     body = data.get("message", "")
     note = (data.get("project_note") or "").strip()
     if note:

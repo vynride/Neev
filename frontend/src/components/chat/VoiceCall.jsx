@@ -173,7 +173,7 @@ export const VoiceCall = ({ projectId, studentName, getSessionId, onTurn, onClos
         tick(analyser, new Float32Array(analyser.fftSize));
 
         go('greeting');
-        const hello = `Hi ${studentName}, I am here. What are you working on?`;
+        const hello = `Hi ${studentName}! What's going on?`;
         setSaid(hello);
         let greeting = null;
         try {
