@@ -37,7 +37,7 @@ already prepared: the question, what was tried, the project context and a draft 
 mentor approves or edits it, usually in minutes. That answer goes back into her chat and into a
 knowledge base, so the same question never reaches a mentor twice.
 
-| Student: a chat that starts from her own week | Student: a hands-free voice call |
+| Student: a chat that starts from her own week | Student: a voice call |
 |---|---|
 | ![Student chat](docs/screenshots/student-chat.png) | ![Voice call](docs/screenshots/voice-call.png) |
 
@@ -81,7 +81,7 @@ flowchart LR
 
 **For students**
 - Chat grounded in her code, documents, client calls and tasks, with readable sources
-- **Voice call** with the AI mentor: hands-free, in Hindi, English or her own language, with
+- **Voice call** with the AI mentor: she talks and taps Send when she is done, in Hindi, English or her own language, with
   short spoken answers like a phone call; plus voice messages and a Listen button on any answer
 - Mermaid diagrams, syntax-highlighted code, draft client messages with one-click copy
 - Dashboard of what to do next, project and task views, client call summaries, knowledge base

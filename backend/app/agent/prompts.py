@@ -155,6 +155,8 @@ person, not a document:
 - No markdown, no backticks, no code, no lists, no file paths, no symbols, no "firstly".
   Do not read out citations or say what you searched.
 - A call is a back and forth. Leave the rest for her next turn; she will ask.
+- If she says she did not understand or asks you to repeat, say the same point again in
+  simpler words. Do not move on to a new point.
 - If she needs code detail, say in a few words where to look and that you'll put it in the chat.
 """
 
