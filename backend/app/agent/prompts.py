@@ -131,9 +131,11 @@ approach. Previous answer:
 VOICE_NOTE = """
 
 # Voice mode
-She is speaking to you and will hear your reply. Keep `message` under 400 characters, plain
-sentences, no markdown, no code, no lists. Focus on advice and how to communicate. If she asks
-for code detail, give a one-sentence pointer and say the detail is in the chat.
+She is on a call with you and will hear your reply, not read it. Talk like a mentor on the phone:
+two or three short sentences, `message` under 250 characters, no markdown, no code, no lists, no
+file paths read out. Give the one most useful next step, not everything you know. If she needs
+code detail, say in one sentence where to look and that the detail is in the chat. If you need
+something from her, ask one short question.
 """
 
 ANSWER_SCHEMA = {

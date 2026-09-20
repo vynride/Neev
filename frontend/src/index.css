@@ -315,3 +315,21 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
 /* Microphone is live */
 .rec-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--color-accent); animation: rec 1.2s ease-in-out infinite; flex-shrink: 0; }
 @media (prefers-reduced-motion: reduce) { .rec-dot { animation: none; } }
+
+/* Voice call */
+.call-screen { position: fixed; inset: 0; z-index: 200; background: radial-gradient(120% 90% at 50% 0%, #2A6049 0%, #1F4D3A 45%, #143527 100%); color: #FFFFFF; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 48px 24px 32px; }
+.call-orb { position: relative; width: 168px; height: 168px; display: flex; align-items: center; justify-content: center; }
+.call-orb::before, .call-orb::after { content: ''; position: absolute; inset: 0; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.28); opacity: 0; }
+.call-orb.is-talking::before { animation: ring 2s ease-out infinite; }
+.call-orb.is-talking::after { animation: ring 2s ease-out 1s infinite; }
+.call-orb.is-thinking .call-orb-core { animation: pulse 1.4s ease-in-out infinite; }
+.call-orb-core { width: 124px; height: 124px; border-radius: 50%; background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.3); display: flex; align-items: center; justify-content: center; transition: transform 90ms linear, opacity var(--dur, 200ms) ease; }
+.call-btn { width: 54px; height: 54px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #FFFFFF; background: rgba(255, 255, 255, 0.14); transition: background 160ms ease, transform 160ms ease, opacity 160ms ease; }
+.call-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.24); }
+.call-btn:active:not(:disabled) { transform: scale(0.95); }
+.call-btn:disabled { opacity: 0.35; cursor: default; }
+.call-btn.call-end { width: 64px; height: 64px; background: var(--color-accent); }
+.call-btn.call-end:hover { background: var(--color-accent-strong, #9C4730); }
+.call-shimmer { background: linear-gradient(90deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.55) 40%, #FFFFFF 50%, rgba(255,255,255,0.55) 60%, rgba(255,255,255,0.55) 100%); background-size: 250% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shimmer 1.8s linear infinite; }
+@keyframes ring { from { opacity: 0.7; transform: scale(0.8); } to { opacity: 0; transform: scale(1.35); } }
+@media (prefers-reduced-motion: reduce) { .call-orb::before, .call-orb::after, .call-orb-core, .call-shimmer { animation: none !important; } .call-shimmer { color: #FFFFFF; background: none; } }

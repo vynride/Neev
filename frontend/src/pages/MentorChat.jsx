@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
-import { ArrowUp, LifeBuoy, Mic, Square, Volume2, X } from 'lucide-react';
+import { ArrowUp, LifeBuoy, Mic, Phone, Square, Volume2, X } from 'lucide-react';
 import { EscalationModal } from '../components/escalation/EscalationModal';
 import { AiMessage } from '../components/chat/AiMessage';
 import { Thinking } from '../components/chat/Thinking';
+import { VoiceCall } from '../components/chat/VoiceCall';
 import { Markdown } from '../components/ui/Markdown';
 import { Avatar } from '../components/ui/Avatar';
 import { SESSIONS_CHANGED } from '../components/layout/StudentLayout';
@@ -166,6 +167,27 @@ export const MentorChat = () => {
     runAsk({ content: '', transcribing: true }, () => voiceService.ask(projectId, blob, sessionId));
   };
   const recorder = useRecorder(handleRecording);
+
+  // Each turn of a call lands in the chat, so the call leaves a written record
+  const [callOpen, setCallOpen] = useState(false);
+  const placeCallTurn = (reply) => {
+    if (!mounted.current) return;
+    if (reply.session_id !== heldSession.current) {
+      window.dispatchEvent(new Event(SESSIONS_CHANGED));
+      heldSession.current = reply.session_id;
+      setSearchParams({ s: reply.session_id }, { replace: true });
+    }
+    setMessages((prev) => [
+      ...prev,
+      { id: `local_${Date.now()}`, sender: 'student', timestamp: formatTime(), content: reply.transcript },
+      { ...fromReply(reply), audioUrl: reply.audio ? audioUrl(reply) : undefined, language: reply.language, audio: undefined }
+    ]);
+  };
+  const startCall = () => {
+    stopSpeaking();
+    setError('');
+    setCallOpen(true);
+  };
   const startRecording = () => {
     stopSpeaking();
     setError('');
@@ -311,7 +333,7 @@ export const MentorChat = () => {
                         style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 8px', borderRadius: '8px', fontSize: '0.74rem', fontWeight: 600, color: speakingId === msg.id ? 'var(--color-primary)' : 'var(--color-text-muted)' }}
                       >
                         {speakingId === msg.id ? <Square size={11} fill="currentColor" /> : <Volume2 size={13} />}
-                        {speakingId === msg.id ? 'Stop' : 'Listen'}
+                        {speakingId === msg.id ? 'Stop audio' : 'Listen'}
                       </button>
                     )}
                   </div>
@@ -388,10 +410,22 @@ export const MentorChat = () => {
               <button
                 type="button"
                 className="hover-row"
+                onClick={startCall}
+                disabled={busy}
+                title="Talk it through on a call with the AI mentor"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 12px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-primary)', whiteSpace: 'nowrap' }}
+              >
+                <Phone size={15} /> Call
+              </button>
+            )}
+            {voiceEnabled && !recorder.recording && (
+              <button
+                type="button"
+                className="hover-row"
                 onClick={startRecording}
                 disabled={busy}
-                aria-label="Ask by voice"
-                title="Ask by voice"
+                aria-label="Send a voice message"
+                title="Send a voice message"
                 style={{ width: '36px', height: '36px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)' }}
               >
                 <Mic size={17} />
@@ -434,6 +468,16 @@ export const MentorChat = () => {
           </div>
         </div>
       </div>
+
+      {callOpen && (
+        <VoiceCall
+          projectId={projectId}
+          studentName={user.name.split(' ')[0]}
+          getSessionId={() => heldSession.current}
+          onTurn={placeCallTurn}
+          onClose={() => setCallOpen(false)}
+        />
+      )}
 
       <EscalationModal
         isOpen={escalationOpen}

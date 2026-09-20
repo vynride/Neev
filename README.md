@@ -66,10 +66,17 @@ After a `make seed`, run `make ingest` and then `make demo`.
 
 ## Voice
 
-A student can ask by voice: the mic in the chat composer records, `POST /api/voice/ask` transcribes it
-with Sarvam (language detected from the audio), answers it as a normal chat turn in a short spoken
-style and in the language she used, and returns the answer with MP3 audio that plays by itself.
-Every AI and mentor message also has a Listen button (`POST /api/voice/speak`).
+**Call.** The Call button in the chat opens a hands-free call with the AI mentor. She talks, a
+pause ends her turn, the answer is spoken, and the call listens again until she hangs up. She can
+mute, or interrupt an answer. Every turn is saved in the chat, and the usual rules apply: a
+question the AI should not answer still becomes a mentor ticket.
 
-Set `SARVAM_API_KEY` in `backend/.env`. Without it the mic and Listen buttons are hidden and the
-chat works as before. Microphone access needs `localhost` or HTTPS.
+**Voice message.** The mic records one question and the answer plays by itself. Every AI and
+mentor message also has a Listen button.
+
+Both use Sarvam: `POST /api/voice/ask` transcribes the audio (language detected from it), answers
+it as a normal chat turn in a short spoken style and in the language she used, and returns the
+answer with MP3 audio. `POST /api/voice/speak` reads any text aloud.
+
+Set `SARVAM_API_KEY` in `backend/.env`. Without it the voice buttons are hidden and the chat works
+as before. Microphone access needs `localhost` or HTTPS.
