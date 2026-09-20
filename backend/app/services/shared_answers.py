@@ -104,8 +104,10 @@ async def find(db: AsyncSession, question: str) -> Hit | None:
     if similarity < JUDGE_THRESHOLD:
         return None
     entry = await db.get(SharedAnswer, nearest.alias_of) if nearest.alias_of else nearest
-    # An answer that students keep rejecting stops being offered
-    if entry is None or entry.rejected >= 2 and entry.rejected > entry.helped:
+    # Not offered while a mentor is reviewing it, or if students keep rejecting it
+    if entry is None or entry.review_ticket_id:
+        return None
+    if entry.rejected >= 2 and entry.rejected > entry.helped:
         return None
 
     judged = similarity < DIRECT_THRESHOLD
@@ -134,6 +136,7 @@ def as_reply(hit: Hit) -> MentorReply:
         next_action="answered",
         message=hit.entry.answer,
         resources=hit.entry.resources or [],
+        reviewed_by=hit.entry.reviewed_by,
         tool_calls=[
             {
                 "name": "shared_answer",
@@ -161,13 +164,27 @@ def _reusable(reply: MentorReply, project: Project, student: User) -> bool:
     return not any(word and word.lower() in text for word in personal)
 
 
+async def _already_stored(db: AsyncSession, vec: list[float]) -> bool:
+    """True if this question is already there, including one held back for a mentor's review.
+
+    Without this, a fresh answer given during a review would be saved beside the reviewed one.
+    """
+    distance = SharedAnswer.embedding.cosine_distance(vec)
+    nearest = (
+        await db.execute(
+            select(distance).where(SharedAnswer.embedding.is_not(None)).order_by(distance).limit(1)
+        )
+    ).scalar_one_or_none()
+    return nearest is not None and 1 - float(nearest) >= DIRECT_THRESHOLD
+
+
 async def store(
     db: AsyncSession, question: str, reply: MentorReply, *, project: Project, student: User
 ) -> None:
     if not _lookup_worthy(question) or not _reusable(reply, project, student):
         return
     vec = await embed_or_none(question)
-    if vec is None:
+    if vec is None or await _already_stored(db, vec):
         return
     db.add(
         SharedAnswer(
@@ -180,6 +197,57 @@ async def store(
         )
     )
     await db.commit()
+
+
+async def hold_for_review(db: AsyncSession, entry_id: str, ticket_id: str) -> None:
+    entry = await db.get(SharedAnswer, entry_id)
+    if entry is not None:
+        entry.review_ticket_id = ticket_id
+        await db.commit()
+
+
+async def apply_review(db: AsyncSession, ticket_id: str, answer: str, mentor_name: str) -> bool:
+    """The mentor's answer replaces the one a student complained about, and is served again."""
+    entry = (
+        await db.execute(select(SharedAnswer).where(SharedAnswer.review_ticket_id == ticket_id))
+    ).scalar_one_or_none()
+    if entry is None:
+        return False
+    entry.answer = answer
+    entry.resources = []
+    entry.review_ticket_id = None
+    entry.reviewed_by = mentor_name
+    entry.helped = entry.rejected = 0
+    await db.commit()
+    return True
+
+
+async def store_mentor_answer(
+    db: AsyncSession, *, question: str, answer: str, category: str, mentor_name: str
+) -> bool:
+    """A mentor's answer to a general question joins the shared answers."""
+    if not _lookup_worthy(question) or PROJECT_MARKERS.search(answer.lower()):
+        return False
+    vec = await embed_or_none(question)
+    if vec is None or await _already_stored(db, vec):
+        return False
+    db.add(
+        SharedAnswer(
+            id=f"sa_{uuid.uuid4().hex[:10]}",
+            category=category,
+            question=question,
+            answer=answer,
+            embedding=vec,
+            reviewed_by=mentor_name,
+        )
+    )
+    await db.commit()
+    return True
+
+
+async def is_under_review(db: AsyncSession, ticket_id: str) -> bool:
+    stmt = select(SharedAnswer.id).where(SharedAnswer.review_ticket_id == ticket_id)
+    return (await db.execute(stmt)).first() is not None
 
 
 async def feedback(db: AsyncSession, entry_id: str, resolved: bool) -> None:

@@ -33,6 +33,11 @@ async def init_postgres() -> None:
     async with engine.begin() as conn:
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.run_sync(Base.metadata.create_all)
+        # create_all does not add columns to a table that already exists
+        for column in ("review_ticket_id", "reviewed_by"):
+            await conn.execute(
+                text(f"ALTER TABLE shared_answers ADD COLUMN IF NOT EXISTS {column} VARCHAR")
+            )
 
 
 async def get_db() -> AsyncIterator[AsyncSession]:

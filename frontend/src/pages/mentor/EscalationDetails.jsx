@@ -78,7 +78,7 @@ export default function EscalationDetails() {
             {ticket.tried && (
               <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--color-border-subtle)' }}>
                 <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-text-subtle)', marginBottom: '6px' }}>
-                  {isFyi ? 'Why you are seeing this' : 'What was tried'}
+                  {isFyi ? 'Why you are seeing this' : ticket.shared_review ? 'Why this needs you' : 'What was tried'}
                 </div>
                 <div style={{ fontSize: '0.86rem', whiteSpace: 'pre-wrap', color: 'var(--color-text-muted)', maxHeight: '200px', overflowY: 'auto' }}>{ticket.tried}</div>
               </div>
@@ -99,7 +99,7 @@ export default function EscalationDetails() {
             >
               {!isFyi && (
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.76rem', color: 'var(--color-primary)', fontWeight: 600, marginBottom: '8px' }}>
-                  <Sparkles size={13} /> {usingDraft ? 'This is the AI’s draft. Approve it, edit it or rewrite it.' : 'Edited from the AI’s draft.'}
+                  <Sparkles size={13} /> {ticket.shared_review ? (usingDraft ? 'This is the saved answer she rejected. Correct it: your version goes to her and to every student who asks this.' : 'Your version will replace the saved answer for every student.') : usingDraft ? 'This is the AI’s draft. Approve it, edit it or rewrite it.' : 'Edited from the AI’s draft.'}
                 </div>
               )}
               <textarea
@@ -111,7 +111,7 @@ export default function EscalationDetails() {
               {error && <div className="notice-error" style={{ marginTop: '10px' }}>{error}</div>}
               <div style={{ display: 'flex', gap: '10px', marginTop: '12px', flexWrap: 'wrap' }}>
                 <Button variant="primary" icon={isFyi ? CheckCircle2 : Send} onClick={handleResolve} disabled={sending || (!isFyi && !answer.trim())}>
-                  {sending ? 'Sending…' : isFyi ? 'Mark as seen' : usingDraft ? 'Approve and send' : 'Send answer'}
+                  {sending ? 'Sending…' : isFyi ? 'Mark as seen' : ticket.shared_review ? (usingDraft ? 'Keep this answer' : 'Send and update for everyone') : usingDraft ? 'Approve and send' : 'Send answer'}
                 </Button>
                 {!isFyi && !usingDraft && (
                   <Button variant="outline" onClick={() => setAnswer(ticket.draft_answer)}>Back to the draft</Button>

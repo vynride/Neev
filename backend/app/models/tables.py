@@ -130,6 +130,9 @@ class SharedAnswer(Base):
     hits: Mapped[int] = mapped_column(Integer, default=0)
     helped: Mapped[int] = mapped_column(Integer, default=0)
     rejected: Mapped[int] = mapped_column(Integer, default=0)
+    # Set while a mentor is checking the answer after a student's complaint; not served meanwhile
+    review_ticket_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    reviewed_by: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

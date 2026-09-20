@@ -60,15 +60,29 @@ An answer is shared only if it would read correctly to any student:
 
 Spoken questions skip the cache, because a call needs a short spoken answer, not a written one.
 
-### Staying correct over time
+### Self-improvement: students flag, mentors fix, everyone benefits
 
-- Every shared answer has the usual "Did this solve it?". "No, try again" runs the full mentor
-  agent for that student, and counts against the stored answer.
-- An answer rejected twice, and more often than it helped, is no longer served.
-- `hits`, `helped`, `rejected` and `last_used_at` are kept per answer, so stale or weak entries
-  can be reviewed or pruned.
-- Hits are counted as `shared_hit` events and reported as `answered_from_shared` in the metrics.
-- The mentor sees a `shared_answer` step in the chat's tool trace, with the similarity.
+A saved answer is marked **Fast** in the chat, so the student knows it was not written for her
+just now. Under it is the usual "Did this solve it?".
+
+1. She clicks **No**. The chat asks what was wrong, with quick reasons ("Too hard to follow",
+   "Not what I asked", "I think it is wrong", "I need an example") and her own words.
+2. Her question, the saved answer and her reason go to her mentor as a ticket, automatically.
+   The ticket says that this answer is shown to every student who asks the question.
+3. While the ticket is open the saved answer is held back: anyone who asks gets a fresh answer
+   from the mentor agent, and that fresh answer is not saved beside the one under review.
+4. The mentor corrects the answer. Their version is delivered into her chat, replaces the saved
+   answer, and is served from then on as "Fast · checked by <mentor>".
+5. A mentor's answer to any other ticket also joins the shared answers when the question was a
+   general one. It always joins the mentor knowledge base, as before.
+
+So the weakest answers are the ones that get a human's attention, once, and the correction
+reaches every later student at no further cost.
+
+Also kept per answer: `hits`, `helped`, `rejected`, `last_used_at` and `reviewed_by`, so stale
+or weak entries can be reviewed or pruned. Hits are counted as `shared_hit` events and reported
+as `answered_from_shared` in the metrics. The mentor sees a `shared_answer` step in the chat's
+tool trace, with the similarity.
 
 ### Cost of a lookup
 

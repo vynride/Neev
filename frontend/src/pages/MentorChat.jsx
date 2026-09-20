@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
-import { ArrowUp, ArrowUpRight, CalendarCheck, ListTodo, Boxes, MessagesSquare, LifeBuoy, Mic, Phone, Square, Volume2, X } from 'lucide-react';
+import { ArrowUp, ArrowUpRight, CalendarCheck, ListTodo, Boxes, MessagesSquare, LifeBuoy, Mic, Phone, Square, Zap, Volume2, X } from 'lucide-react';
 import { EscalationModal } from '../components/escalation/EscalationModal';
 import { AiMessage } from '../components/chat/AiMessage';
 import { Thinking } from '../components/chat/Thinking';
@@ -67,7 +67,8 @@ const fromTurn = (t) => ({
   ticket_id: t.ticket_id,
   attempt: t.attempt,
   resolved: t.resolved,
-  shared_id: t.shared_id
+  shared_id: t.shared_id,
+  reviewed_by: t.reviewed_by
 });
 
 // A reply from POST /api/chat or the feedback endpoint -> a chat message
@@ -260,11 +261,11 @@ export const MentorChat = () => {
     }
   };
 
-  const handleFeedback = async (msg, resolved) => {
+  const handleFeedback = async (msg, resolved, reason) => {
     setFeedbackBusyId(msg.id);
     setError('');
     try {
-      const reply = await mentorService.sendFeedback(msg.message_id, resolved);
+      const reply = await mentorService.sendFeedback(msg.message_id, resolved, reason);
       if (!mounted.current || heldSession.current !== sessionId) return;
       setMessages((prev) => {
         const marked = prev.map((m) => (m.id === msg.id ? { ...m, resolved } : m));
@@ -355,6 +356,14 @@ export const MentorChat = () => {
                       {isMentor ? msg.mentor_name || 'Your mentor' : 'AI Mentor'}
                     </span>
                     {isMentor && <span style={{ fontSize: '0.72rem', color: 'var(--color-accent-strong)' }}>your mentor</span>}
+                    {(msg.from_shared || msg.shared_id) && (
+                      <span
+                        className="fast-badge"
+                        title={`Another student asked this before, so the answer was ready.${msg.reviewed_by ? ` ${msg.reviewed_by} checked it.` : ''} If it does not help, say so and your mentor will fix it.`}
+                      >
+                        <Zap size={11} fill="currentColor" strokeWidth={0} /> Fast{msg.reviewed_by ? ` · checked by ${msg.reviewed_by.split(' ')[0]}` : ''}
+                      </span>
+                    )}
                     <span style={{ fontSize: '0.72rem', color: 'var(--color-text-subtle)' }}>{msg.timestamp}</span>
                     {voiceEnabled && msg.content && (
                       <button

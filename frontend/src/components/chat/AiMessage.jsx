@@ -45,6 +45,8 @@ const Source = ({ citation, project }) => {
   );
 };
 
+const REASONS = ['Too hard to follow', 'Not what I asked', 'I think it is wrong', 'I need an example'];
+
 const feedbackButton = {
   display: 'inline-flex',
   alignItems: 'center',
@@ -60,6 +62,9 @@ const feedbackButton = {
 export const AiMessage = ({ msg, project, isLatest, mentorReplied, onFeedback, feedbackBusy }) => {
   const shared = msg.from_shared || !!msg.shared_id;
   const [copied, setCopied] = useState(false);
+  // A saved answer that did not help goes to the mentor with her reason, so it gets fixed for everyone
+  const [asking, setAsking] = useState(false);
+  const [reason, setReason] = useState('');
   // Only the newest reply can be rated; rating an older one would restart a finished thread
   const canGiveFeedback = isLatest && msg.next_action !== 'escalated' && msg.resolved == null && msg.message_id;
 
@@ -120,14 +125,14 @@ export const AiMessage = ({ msg, project, isLatest, mentorReplied, onFeedback, f
       {(canGiveFeedback || msg.resolved === true || msg.category) && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', paddingTop: canGiveFeedback ? '12px' : 0, borderTop: canGiveFeedback ? '1px solid var(--color-border-subtle)' : 'none' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minHeight: '28px' }}>
-            {canGiveFeedback && !feedbackBusy && (
+            {canGiveFeedback && !feedbackBusy && !asking && (
               <>
                 <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>Did this solve it?</span>
                 <button className="hover-row" onClick={() => onFeedback(msg, true)} style={feedbackButton}>
                   <ThumbsUp size={13} /> Yes
                 </button>
-                <button className="hover-row" onClick={() => onFeedback(msg, false)} style={feedbackButton}>
-                  <ThumbsDown size={13} /> {msg.attempt >= 2 ? 'No, ask my mentor' : 'No, try again'}
+                <button className="hover-row" onClick={() => (shared ? setAsking(true) : onFeedback(msg, false))} style={feedbackButton}>
+                  <ThumbsDown size={13} /> {shared ? 'No' : msg.attempt >= 2 ? 'No, ask my mentor' : 'No, try again'}
                 </button>
               </>
             )}
@@ -137,10 +142,49 @@ export const AiMessage = ({ msg, project, isLatest, mentorReplied, onFeedback, f
               </span>
             )}
           </div>
-          {msg.category && (
-            <span style={{ fontSize: '0.7rem', color: 'var(--color-text-subtle)' }} title={shared ? 'Another student asked the same question, so this answer was ready. Say "No, try again" for a fresh one.' : undefined}>
-              {shared ? 'Asked before · answered instantly · ' : ''}{categoryLabel(msg.category)}
-            </span>
+          {msg.category && !asking && (
+            <span style={{ fontSize: '0.7rem', color: 'var(--color-text-subtle)' }}>{categoryLabel(msg.category)}</span>
+          )}
+          {canGiveFeedback && asking && !feedbackBusy && (
+            <form
+              className="fade-enter"
+              onSubmit={(e) => {
+                e.preventDefault();
+                onFeedback(msg, false, reason.trim());
+              }}
+              style={{ width: 'min(640px, 100%)', display: 'flex', flexDirection: 'column', gap: '10px' }}
+            >
+              <div>
+                <div style={{ fontSize: '0.86rem', fontWeight: 600 }}>What was wrong with this answer?</div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+                  Your mentor will see your question, this answer and what you write here. Their reply comes to this chat and fixes the answer for other students too.
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                {REASONS.map((r) => (
+                  <button key={r} type="button" className="hover-row" onClick={() => setReason((prev) => (prev ? `${prev.replace(/\s+$/, '')} ${r}.` : `${r}.`))} style={{ ...feedbackButton, fontWeight: 500 }}>
+                    {r}
+                  </button>
+                ))}
+              </div>
+              <textarea
+                autoFocus
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                rows={3}
+                maxLength={2000}
+                placeholder="In your own words. For example: it uses words I do not know, or it does not cover what I asked."
+                style={{ width: '100%', resize: 'vertical', padding: '10px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border-strong)', background: 'var(--bg-surface)', fontSize: '0.88rem', lineHeight: 1.5, fontFamily: 'inherit' }}
+              />
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button type="submit" className="btn btn-primary" disabled={!reason.trim()} style={{ padding: '7px 14px', fontSize: '0.82rem', opacity: reason.trim() ? 1 : 0.5 }}>
+                  Send to my mentor
+                </button>
+                <button type="button" className="hover-row" onClick={() => setAsking(false)} style={feedbackButton}>
+                  Cancel
+                </button>
+              </div>
+            </form>
           )}
         </div>
       )}

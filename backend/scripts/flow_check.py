@@ -226,8 +226,35 @@ async def main() -> None:
             "Threadline" not in g2["message"] and "contract between" in g2["message"],
         )
 
+        # She rejects the saved answer: the mentor reviews it, and the fix is what others get
+        r = await c.post(
+            f"/chat/{g2['message_id']}/feedback",
+            headers=other,
+            json={"resolved": False, "reason": "Too abstract, I need an example"},
+        )
+        review = r.json()
+        check("rejected saved answer goes to the mentor", review["next_action"] == "escalated")
+        third = await login("s3")
+        held = (await c.post("/chat", headers=third, json={**ask, "project_id": "p2"})).json()
+        check("a saved answer under review is not served", not held["from_shared"])
+        detail = (await c.get(f"/mentor/tickets/{review['ticket_id']}", headers=mentor)).json()
+        check(
+            "mentor sees the complaint and that the answer is shared",
+            detail["shared_review"] and "Too abstract" in detail["tried"],
+        )
+        fixed = "An API is a menu: you order by name and the kitchen decides how to cook it. " * 4
+        r = await c.post(
+            f"/mentor/tickets/{review['ticket_id']}/resolve", headers=mentor, json={"answer": fixed}
+        )
+        check("mentor's answer replaces the saved one", r.json()["shared"])
+        g3 = (await c.post("/chat", headers=third, json={**ask, "project_id": "p2"})).json()
+        check(
+            "next student gets the mentor's version",
+            g3["from_shared"] and "menu" in g3["message"] and g3["reviewed_by"],
+        )
+
         m = (await c.get("/mentor/metrics", headers=mentor)).json()
-        check("shared answers are counted", m["answered_from_shared"] == 1)
+        check("shared answers are counted", m["answered_from_shared"] == 2)
         check(f"metrics computed (deflection {m['deflection_rate']})", m["questions"] >= 3)
 
         mem = (await c.get("/students/s1/memory", headers=mentor)).json()

@@ -48,6 +48,8 @@ class MentorReply:
     wants_human: bool = False
     # The part of a general answer that reads the same for any student; None otherwise
     shareable: str | None = None
+    # The mentor who checked a shared answer, if one has
+    reviewed_by: str | None = None
     excerpts: list[dict] = field(default_factory=list)
     tool_calls: list[dict] = field(default_factory=list)
 

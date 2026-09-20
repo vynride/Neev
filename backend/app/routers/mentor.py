@@ -10,7 +10,7 @@ from app.db.mongo import PROJECT_MEMORY, SESSIONS, STUDENT_MEMORY, get_mongo
 from app.db.postgres import get_db
 from app.integrations import clickup
 from app.models import Assignment, MetricEvent, Project, StudentScore, Task, Ticket, User
-from app.services import escalation
+from app.services import escalation, shared_answers
 from app.services.sessions import deliver_mentor_answer
 
 router = APIRouter(prefix="/api/mentor", tags=["mentor"])
@@ -100,6 +100,8 @@ async def get_ticket(
         "excerpts": ticket.excerpts,
         "draft_answer": ticket.draft_answer,
         "final_answer": ticket.final_answer,
+        # True when the answer under review is one that every student gets
+        "shared_review": await shared_answers.is_under_review(db, ticket.id),
         "chat": [
             {"role": t["role"], "content": t["content"], "created_at": t["created_at"].isoformat()}
             for t in session.get("turns", [])
@@ -119,10 +121,30 @@ async def resolve(
         raise HTTPException(409, "Ticket is already resolved")
     if ticket.opened_at is None:
         ticket.opened_at = ticket.created_at
-    entry = await escalation.resolve_ticket(db, ticket, body.answer.strip())
+    answer = body.answer.strip()
+    entry = await escalation.resolve_ticket(db, ticket, answer)
+    shared = False
     if ticket.kind == "ticket":
-        await deliver_mentor_answer(ticket.session_id, user.name, body.answer.strip(), ticket.id)
-    return {**ticket_out(ticket), "kb_entry_id": entry.id if entry else None}
+        await deliver_mentor_answer(ticket.session_id, user.name, answer, ticket.id)
+        shared = await _share_if_general(db, ticket, answer, user.name)
+    return {**ticket_out(ticket), "kb_entry_id": entry.id if entry else None, "shared": shared}
+
+
+async def _share_if_general(db: AsyncSession, ticket: Ticket, answer: str, mentor: str) -> bool:
+    """The mentor's answer to a general question is what every later student gets.
+
+    A ticket that reviews a saved answer replaces it. Any other ticket adds a new shared answer
+    when the question was a general one.
+    """
+    if await shared_answers.apply_review(db, ticket.id, answer, mentor):
+        return True
+    session = await get_mongo()[SESSIONS].find_one({"_id": ticket.session_id}) or {}
+    asked = [t for t in session.get("turns", []) if t.get("question") == ticket.question]
+    if not any(t.get("scope") == "generic" for t in asked):
+        return False
+    return await shared_answers.store_mentor_answer(
+        db, question=ticket.question, answer=answer, category=ticket.category, mentor_name=mentor
+    )
 
 
 @router.get("/metrics")
