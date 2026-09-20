@@ -1,10 +1,11 @@
 <p align="center">
-  <img src="frontend/public/logo.svg" width="84" alt="Project Saathi logo: a two-leaf sprout">
+  <img src="frontend/public/logo.svg" width="84" alt="Neev logo: a two-leaf sprout">
 </p>
 
-<h1 align="center">Project Saathi</h1>
+<h1 align="center">Neev</h1>
 
 <p align="center">
+  <em>Neev</em> (नींव) is Hindi for foundation: the base a career is built on.<br>
   An AI mentor that knows each student's client project, and hands a question to the human mentor only when it should.<br>
   Built for <a href="https://barabaricollective.org/">Barabari Collective</a> · Team 21 · JPMorganChase Code for Good 2026, Hyderabad · Challenge 2 (Mentoring)
 </p>
@@ -27,7 +28,7 @@ client requirements better, while mentors spend their time where it is most need
 
 ## What we built
 
-A student asks Project Saathi first, by typing or by calling it. It has read her project: the
+A student asks Neev first, by typing or by calling it. It has read her project: the
 code, the brief and statement of work, the client call transcripts, and her ClickUp tasks. It
 knows her strengths and weak areas from her CodeGuru and Samvad Saathi scores. It guides rather
 than solves, and shows where each project fact came from.
@@ -49,7 +50,7 @@ knowledge base, so the same question never reaches a mentor twice.
 
 The challenge statement lists six considerations. This is how each one is met.
 
-| Consideration | What Project Saathi does |
+| Consideration | What Neev does |
 |---|---|
 | **Student independence** | Guides, does not solve: explains the approach, shows short snippets in the project's stack, draws diagrams, links learning resources found by web search. Pitches the explanation to her level, step by step in a weak domain and brief in a strong one. Records recurring struggle topics so both she and her mentor can see them. |
 | **Context-aware support** | Every answer is built from her project: a project card always in the prompt, hybrid search over documents and client call transcripts, live reading of the actual repository (`grep`, `read_file`), and her ClickUp tasks and deadlines. Six specialists by question type: requirements, scope and contract, architecture, debugging, deployment, Git. |
@@ -105,7 +106,7 @@ flowchart LR
 
 What changes for each stakeholder:
 
-| Who | Before | With Project Saathi |
+| Who | Before | With Neev |
 |---|---|---|
 | Students | Wait for a mentor, even for routine questions | A grounded answer in 10 to 20 seconds, at any hour, by text or voice, in their language. They learn the method, not just the fix. |
 | Mentors | Re-learn the context for every ticket | See only unresolved questions, with context and a draft. Approving a good draft is one click. |

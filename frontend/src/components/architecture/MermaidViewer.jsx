@@ -72,7 +72,7 @@ export const MermaidViewer = ({ chartDefinition }) => {
     const render = async () => {
       if (!chartDefinition) return;
       try {
-        const id = `mermaid-saathi-${Math.random().toString(36).substring(2, 9)}`;
+        const id = `mermaid-neev-${Math.random().toString(36).substring(2, 9)}`;
         const { svg } = await mermaid.render(id, withoutInlineStyles(chartDefinition));
         if (!cancelled) {
           setSvgContent(svg);

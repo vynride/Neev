@@ -71,7 +71,7 @@ export const StudentLogin = () => {
 
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '10px' }}>
           <Leaves style={{ width: '30px', height: '30px', color: '#FFFFFF' }} />
-          <span style={{ fontWeight: 700, fontSize: '1.1rem', letterSpacing: '-0.02em' }}>Barabari</span>
+          <span style={{ fontWeight: 700, fontSize: '1.1rem', letterSpacing: '-0.02em' }}>Neev</span>
         </div>
 
         <div className="page-enter" style={{ position: 'relative', maxWidth: '440px' }}>
@@ -83,7 +83,7 @@ export const StudentLogin = () => {
         </div>
 
         <div style={{ position: 'relative', fontSize: '0.78rem', opacity: 0.6, lineHeight: 1.6, maxWidth: '400px', textWrap: 'balance' }}>
-          Project Saathi is the AI mentor for Barabari freelancers. It answers from your own project, and brings in a
+          Neev is the AI mentor for Barabari freelancers. It answers from your own project, and brings in a
           mentor when it cannot help.
         </div>
       </div>

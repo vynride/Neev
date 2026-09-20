@@ -18,7 +18,7 @@ async def lifespan(app: FastAPI):
     await engine.dispose()
 
 
-app = FastAPI(title="Barabari AI Mentor", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="Neev: the Barabari AI mentor", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
