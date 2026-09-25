@@ -12,13 +12,20 @@ strict-compatible: additionalProperties false and every property listed in requi
 `temperature` is never sent; the GPT-5.6 models reject or ignore it.
 """
 
+import hashlib
 import json
+import time
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 from openai import AsyncOpenAI
 
 from app.config import get_settings
+from app.services.run_traces import record_event
+
+
+def _prompt_hash(system: str) -> str:
+    return hashlib.sha256(system.encode("utf-8")).hexdigest()
 
 
 @dataclass
@@ -32,6 +39,10 @@ class ToolCall:
 class LLMResult:
     text: str = ""
     tool_calls: list[ToolCall] = field(default_factory=list)
+    provider_request_id: str | None = None
+    model: str | None = None
+    usage: dict = field(default_factory=dict)
+    finish_reason: str | None = None
 
     def as_message(self) -> dict:
         msg: dict[str, Any] = {"role": "assistant", "content": self.text or None}
@@ -74,10 +85,21 @@ class _Base:
             return []
         out: list[list[float]] = []
         for i in range(0, len(texts), 96):
+            started = time.perf_counter()
             resp = await self._client.embeddings.create(
                 model=self._embedding_model, input=texts[i : i + 96]
             )
             out.extend(d.embedding for d in resp.data)
+            record_event(
+                "gen_ai.embedding",
+                input=texts[i : i + 96],
+                output={"dimensions": [len(d.embedding) for d in resp.data]},
+                attributes={
+                    "gen_ai.request.model": self._embedding_model,
+                    "gen_ai.response.id": getattr(resp, "id", None),
+                    "duration_ms": round((time.perf_counter() - started) * 1000),
+                },
+            )
         return out
 
 
@@ -137,13 +159,40 @@ class ResponsesClient(_Base):
         if effort:
             kwargs["reasoning"] = {"effort": effort}
 
+        started = time.perf_counter()
         resp = await self._client.responses.create(**kwargs)
-        result = LLMResult(text=resp.output_text or "")
+        result = LLMResult(
+            text=resp.output_text or "",
+            provider_request_id=resp.id,
+            model=getattr(resp, "model", model),
+            usage=resp.usage.model_dump() if resp.usage else {},
+            finish_reason=getattr(resp, "status", None),
+        )
         for item in resp.output:
             if item.type == "function_call":
                 result.tool_calls.append(
                     ToolCall(id=item.call_id, name=item.name, arguments=_parse_args(item.arguments))
                 )
+        record_event(
+            "gen_ai.chat",
+            input={
+                "system": system,
+                "messages": messages,
+                "tools": tools,
+                "json_schema": json_schema,
+                "effort": effort,
+            },
+            output={"text": result.text, "tool_calls": [vars(t) for t in result.tool_calls]},
+            attributes={
+                "gen_ai.request.model": model,
+                "gen_ai.prompt.sha256": _prompt_hash(system),
+                "gen_ai.response.model": result.model,
+                "gen_ai.response.id": result.provider_request_id,
+                "gen_ai.usage": result.usage,
+                "finish_reason": result.finish_reason,
+                "duration_ms": round((time.perf_counter() - started) * 1000),
+            },
+        )
         return result
 
 
@@ -203,15 +252,42 @@ class ChatCompletionsClient(_Base):
         if effort:
             kwargs["reasoning_effort"] = effort
 
+        started = time.perf_counter()
         resp = await self._client.chat.completions.create(**kwargs)
         msg = resp.choices[0].message
-        result = LLMResult(text=msg.content or "")
+        result = LLMResult(
+            text=msg.content or "",
+            provider_request_id=resp.id,
+            model=resp.model,
+            usage=resp.usage.model_dump() if resp.usage else {},
+            finish_reason=resp.choices[0].finish_reason,
+        )
         for tc in msg.tool_calls or []:
             result.tool_calls.append(
                 ToolCall(
                     id=tc.id, name=tc.function.name, arguments=_parse_args(tc.function.arguments)
                 )
             )
+        record_event(
+            "gen_ai.chat",
+            input={
+                "system": system,
+                "messages": messages,
+                "tools": tools,
+                "json_schema": json_schema,
+                "effort": effort,
+            },
+            output={"text": result.text, "tool_calls": [vars(t) for t in result.tool_calls]},
+            attributes={
+                "gen_ai.request.model": model,
+                "gen_ai.prompt.sha256": _prompt_hash(system),
+                "gen_ai.response.model": result.model,
+                "gen_ai.response.id": result.provider_request_id,
+                "gen_ai.usage": result.usage,
+                "finish_reason": result.finish_reason,
+                "duration_ms": round((time.perf_counter() - started) * 1000),
+            },
+        )
         return result
 
 

@@ -44,6 +44,7 @@ class MentorReply:
     resources: list[dict] = field(default_factory=list)
     draft_client_message: str | None = None
     sensitive: bool = False
+    conflict_detected: bool = False
     sensitive_reason: str | None = None
     struggle_topic: str | None = None
     wants_human: bool = False
@@ -100,6 +101,26 @@ def _validate(reply: dict, ctx: ToolContext) -> tuple[list[dict], list[dict]]:
             citations.append(c)
     resources = [r for r in reply.get("resources", []) if r.get("url") in ctx.seen_urls]
     return citations, resources[:3]
+
+
+def guard_requirement_answer(category: str, scope: str, data: dict, citations: list[dict]) -> dict:
+    """Do not turn an uncited requirement or contract guess into a stated project fact."""
+    if (
+        scope == "project_specific"
+        and category in {"requirements_communication", "scope_timeline_contract"}
+        and data.get("next_action") == "answered"
+        and not citations
+    ):
+        return {
+            **data,
+            "next_action": "ask_client",
+            "message": (
+                "I could not verify this point in the project sources. "
+                "Ask the client to confirm it."
+            ),
+            "draft_client_message": "Could you confirm the current requirement and effective date?",
+        }
+    return data
 
 
 def _spoken(text: str, sentences: int = 2) -> str:
@@ -189,6 +210,7 @@ async def answer(
         data = {"next_action": "answered", "message": text or "I could not produce an answer."}
 
     citations, resources = _validate(data, ctx)
+    data = guard_requirement_answer(route.category, route.scope, data, citations)
     if voice:
         data["message"] = _spoken(data.get("message", ""))
     body = data.get("message", "")
@@ -204,6 +226,7 @@ async def answer(
         resources=resources,
         draft_client_message=data.get("draft_client_message"),
         sensitive=bool(data.get("sensitive")),
+        conflict_detected=bool(data.get("conflict_detected")),
         sensitive_reason=data.get("sensitive_reason"),
         struggle_topic=data.get("struggle_topic"),
         wants_human=route.wants_human,

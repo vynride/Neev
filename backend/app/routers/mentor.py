@@ -10,7 +10,7 @@ from app.db.mongo import PROJECT_MEMORY, SESSIONS, STUDENT_MEMORY, get_mongo
 from app.db.postgres import get_db
 from app.integrations import clickup
 from app.models import Assignment, MetricEvent, Project, StudentScore, Task, Ticket, User
-from app.services import escalation, shared_answers
+from app.services import audit, escalation, shared_answers
 from app.services.sessions import deliver_mentor_answer
 
 router = APIRouter(prefix="/api/mentor", tags=["mentor"])
@@ -127,6 +127,18 @@ async def resolve(
     if ticket.kind == "ticket":
         await deliver_mentor_answer(ticket.session_id, user.name, answer, ticket.id)
         shared = await _share_if_general(db, ticket, answer, user.name)
+    await audit.record(
+        project_id=ticket.project_id,
+        actor_id=user.id,
+        action="ticket.resolved",
+        target_id=ticket.id,
+        before={"status": "open", "question": ticket.question},
+        after={
+            "status": ticket.status,
+            "answer": answer,
+            "kb_entry_id": entry.id if entry else None,
+        },
+    )
     return {**ticket_out(ticket), "kb_entry_id": entry.id if entry else None, "shared": shared}
 
 

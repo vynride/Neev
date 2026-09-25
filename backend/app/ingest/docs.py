@@ -86,7 +86,11 @@ async def ingest_project_text(db: AsyncSession, project_id: str, embed: bool = T
             for row, vec in zip(rows, vectors, strict=True):
                 row.embedding = vec
 
-    await db.execute(delete(Chunk).where(Chunk.project_id == project_id))
+    await db.execute(
+        delete(Chunk).where(
+            Chunk.project_id == project_id, Chunk.source_type.in_(("doc", "meeting"))
+        )
+    )
     db.add_all(rows)
     await db.commit()
     return len(rows)

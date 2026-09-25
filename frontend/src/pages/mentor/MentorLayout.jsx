@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { LayoutDashboard, LifeBuoy, Users } from 'lucide-react';
+import { LayoutDashboard, LifeBuoy, Users, ListChecks, Activity } from 'lucide-react';
 import { UserMenu } from '../../components/layout/UserMenu';
 import { mentorDeskService } from '../../services/mentorDeskService';
 
@@ -11,6 +11,8 @@ const POLL_MS = 20000;
 const NAV_ITEMS = [
   { label: 'Dashboard', path: '/mentor/dashboard', icon: LayoutDashboard },
   { label: 'Escalations', path: '/mentor/escalations', icon: LifeBuoy, badge: true },
+  { label: 'Requirements', path: '/mentor/requirements', icon: ListChecks },
+  { label: 'Run trails', path: '/mentor/runs', icon: Activity },
   { label: 'Students', path: '/mentor/students', icon: Users }
 ];
 

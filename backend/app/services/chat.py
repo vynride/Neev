@@ -9,7 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.agent import mentor
 from app.agent.mentor import MentorReply
 from app.models import Project, User
-from app.services import escalation, memory, sessions, shared_answers
+from app.services import audit, escalation, memory, sessions, shared_answers
+from app.services.run_traces import RunTrace, persist, record_event, use_run
 
 ESCALATED_MESSAGE = (
     "I have sent this to your mentor, {mentor}, with your question, what we tried and the "
@@ -86,6 +87,7 @@ async def _escalate(
     """Reuse a past mentor answer if one is close enough, otherwise open a ticket."""
     match = None if skip_kb else await escalation.find_kb_match(db, question)
     if match:
+        record_event("agent.kb_hit", output={"id": match.id, "answer": match.answer})
         await escalation.record(db, "kb_hit", project.id, student.id)
         turn = await sessions.append_turn(
             session_id,
@@ -136,7 +138,7 @@ async def _escalate(
     )
 
 
-async def ask(
+async def _ask_impl(
     db: AsyncSession,
     *,
     student: User,
@@ -156,6 +158,9 @@ async def ask(
     plain = not voice and not extra_context
     hit = await shared_answers.find(db, message) if plain else None
     if hit:
+        record_event(
+            "agent.shared_answer_hit", output={"id": hit.entry.id, "answer": hit.entry.answer}
+        )
         await escalation.record(db, "shared_hit", project.id, student.id)
         reply = shared_answers.as_reply(hit)
         turn = await _save_reply(
@@ -180,7 +185,7 @@ async def ask(
         extra_context=extra_context,
     )
 
-    if reply.sensitive:
+    if reply.sensitive or reply.conflict_detected:
         await escalation.create_ticket(
             db,
             kind="fyi",
@@ -189,7 +194,12 @@ async def ask(
             session_id=session["_id"],
             category=reply.category,
             question=message,
-            tried=reply.sensitive_reason or "Sensitive topic",
+            tried=reply.sensitive_reason
+            or (
+                "Conflicting project sources; the AI gave a cited best guess."
+                if reply.conflict_detected
+                else "Sensitive topic"
+            ),
             draft_answer=reply.message,
             excerpts=reply.excerpts,
         )
@@ -220,6 +230,51 @@ async def ask(
     if plain and not history:
         await shared_answers.store(db, message, reply, project=project, student=student)
     return _response(session["_id"], turn, reply)
+
+
+async def ask(
+    db: AsyncSession,
+    *,
+    student: User,
+    project: Project,
+    session_id: str | None,
+    message: str,
+    voice: bool = False,
+    extra_context: str | None = None,
+) -> dict:
+    trace = RunTrace(project_id=project.id, actor_id=student.id, question=message)
+    with use_run(trace):
+        record_event(
+            "agent.request",
+            input={
+                "message": message,
+                "voice": voice,
+                "session_id": session_id,
+                "extra_context": extra_context,
+            },
+        )
+        try:
+            result = await _ask_impl(
+                db,
+                student=student,
+                project=project,
+                session_id=session_id,
+                message=message,
+                voice=voice,
+                extra_context=extra_context,
+            )
+            trace.session_id = result.get("session_id")
+            trace.message_id = result.get("message_id")
+            trace.outcome = result.get("next_action", "answered")
+            record_event("agent.response", output=result)
+            return result
+        except Exception as exc:
+            trace.outcome = "error"
+            trace.error = repr(exc)
+            record_event("agent.error", output={"error": repr(exc)})
+            raise
+        finally:
+            await persist(trace)
 
 
 async def _review_shared(
@@ -271,7 +326,7 @@ async def _review_shared(
     )
 
 
-async def feedback(
+async def _feedback_impl(
     db: AsyncSession,
     *,
     student: User,
@@ -282,6 +337,14 @@ async def feedback(
     reason: str = "",
 ) -> dict:
     await sessions.mark_resolved(session["_id"], turn["id"], resolved)
+    await audit.record(
+        project_id=project.id,
+        actor_id=student.id,
+        action="answer.feedback",
+        target_id=turn["id"],
+        before={"resolved": turn.get("resolved")},
+        after={"resolved": resolved, "reason": reason},
+    )
     if turn.get("shared_id"):
         await shared_answers.feedback(db, turn["shared_id"], resolved)
         if not resolved:
@@ -331,3 +394,46 @@ async def feedback(
         excerpts=turn.get("excerpts", []),
         skip_kb=from_kb,
     )
+
+
+async def feedback(
+    db: AsyncSession,
+    *,
+    student: User,
+    project: Project,
+    session: dict,
+    turn: dict,
+    resolved: bool,
+    reason: str = "",
+) -> dict:
+    trace = RunTrace(project_id=project.id, actor_id=student.id, question=turn.get("question", ""))
+    trace.session_id = session["_id"]
+    with use_run(trace):
+        record_event(
+            "agent.feedback",
+            input={
+                "message_id": turn["id"],
+                "resolved": resolved,
+                "reason": reason,
+            },
+        )
+        try:
+            result = await _feedback_impl(
+                db,
+                student=student,
+                project=project,
+                session=session,
+                turn=turn,
+                resolved=resolved,
+                reason=reason,
+            )
+            trace.message_id = result.get("message_id", turn["id"])
+            trace.outcome = result.get("next_action", "resolved")
+            record_event("agent.response", output=result)
+            return result
+        except Exception as exc:
+            trace.outcome, trace.error = "error", repr(exc)
+            record_event("agent.error", output={"error": repr(exc)})
+            raise
+        finally:
+            await persist(trace)

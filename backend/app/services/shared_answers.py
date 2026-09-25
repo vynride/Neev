@@ -26,7 +26,8 @@ from app.agent.mentor import MentorReply
 from app.agent.search import embed_or_none
 from app.config import get_settings
 from app.llm.client import get_llm
-from app.models import Project, SharedAnswer, User
+from app.models import Project, SharedAnswer, SharedAnswerInvalidation, User
+from app.services.run_traces import record_event
 
 log = logging.getLogger(__name__)
 
@@ -93,7 +94,8 @@ async def find(db: AsyncSession, question: str) -> Hit | None:
     row = (
         await db.execute(
             select(SharedAnswer, distance)
-            .where(SharedAnswer.embedding.is_not(None))
+            .where(SharedAnswer.embedding.is_not(None),
+                   ~SharedAnswer.id.in_(select(SharedAnswerInvalidation.answer_id)))
             .order_by(distance)
             .limit(1)
         )
@@ -106,6 +108,8 @@ async def find(db: AsyncSession, question: str) -> Hit | None:
     entry = await db.get(SharedAnswer, nearest.alias_of) if nearest.alias_of else nearest
     # Not offered while a mentor is reviewing it, or if students keep rejecting it
     if entry is None or entry.review_ticket_id:
+        return None
+    if await db.get(SharedAnswerInvalidation, entry.id) is not None:
         return None
     if entry.rejected >= 2 and entry.rejected > entry.helped:
         return None
@@ -172,7 +176,10 @@ async def _already_stored(db: AsyncSession, vec: list[float]) -> bool:
     distance = SharedAnswer.embedding.cosine_distance(vec)
     nearest = (
         await db.execute(
-            select(distance).where(SharedAnswer.embedding.is_not(None)).order_by(distance).limit(1)
+            select(distance)
+            .where(SharedAnswer.embedding.is_not(None),
+                   ~SharedAnswer.id.in_(select(SharedAnswerInvalidation.answer_id)))
+            .order_by(distance).limit(1)
         )
     ).scalar_one_or_none()
     return nearest is not None and 1 - float(nearest) >= DIRECT_THRESHOLD
@@ -186,17 +193,20 @@ async def store(
     vec = await embed_or_none(question)
     if vec is None or await _already_stored(db, vec):
         return
-    db.add(
-        SharedAnswer(
-            id=f"sa_{uuid.uuid4().hex[:10]}",
-            category=reply.category,
-            question=question,
-            answer=reply.shareable,
-            resources=reply.resources,
-            embedding=vec,
-        )
+    entry = SharedAnswer(
+        id=f"sa_{uuid.uuid4().hex[:10]}",
+        category=reply.category,
+        question=question,
+        answer=reply.shareable,
+        resources=reply.resources,
+        embedding=vec,
     )
+    db.add(entry)
     await db.commit()
+    record_event(
+        "shared_answer.stored",
+        output={"id": entry.id, "question": question, "answer": entry.answer},
+    )
 
 
 async def hold_for_review(db: AsyncSession, entry_id: str, ticket_id: str) -> None:
