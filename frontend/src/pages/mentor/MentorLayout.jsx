@@ -5,7 +5,7 @@ import { UserMenu } from '../../components/layout/UserMenu';
 import { mentorDeskService } from '../../services/mentorDeskService';
 
 // Fired when a ticket is resolved, so the count in the sidebar drops straight away
-export const TICKETS_CHANGED = 'saathi:tickets-changed';
+export const TICKETS_CHANGED = 'neev:tickets-changed';
 const POLL_MS = 20000;
 
 const NAV_ITEMS = [
@@ -45,10 +45,10 @@ export default function MentorLayout() {
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg-app)' }}>
       <aside style={{ width: '248px', background: 'var(--bg-sidebar)', borderRight: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
         <div style={{ padding: '18px 20px 22px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <img src="/logo.svg" alt="Barabari" style={{ width: '32px', height: '32px' }} />
+          <img src="/logo.svg" alt="Neev" style={{ width: '32px', height: '32px' }} />
           <div>
-            <div style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--color-primary)', letterSpacing: '-0.02em' }}>Barabari</div>
-            <div style={{ fontSize: '0.68rem', color: 'var(--color-text-subtle)' }}>Mentor desk</div>
+            <div style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--color-primary)', letterSpacing: '-0.02em' }}>Neev</div>
+            <div style={{ fontSize: '0.68rem', color: 'var(--color-text-subtle)' }}>Mentor desk · Barabari</div>
           </div>
         </div>
 

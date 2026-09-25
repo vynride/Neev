@@ -4,8 +4,8 @@ import axios from 'axios';
 // and Caddy does the same in production. Set VITE_API_BASE_URL to call a backend elsewhere.
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
-export const TOKEN_KEY = 'saathi_auth_token';
-export const USER_KEY = 'saathi_user';
+export const TOKEN_KEY = 'neev_auth_token';
+export const USER_KEY = 'neev_user';
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,

@@ -25,10 +25,10 @@ export const LandingPage = () => {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <img src="/logo.svg" alt="Barabari" style={{ width: '38px', height: '38px' }} />
+          <img src="/logo.svg" alt="Neev" style={{ width: '38px', height: '38px' }} />
           <div>
             <div style={{ fontWeight: 800, fontSize: '1.25rem', color: 'var(--color-primary)', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              Barabari <span style={{ fontSize: '0.9rem', color: 'var(--color-accent)', fontWeight: 600 }}>| Project Saathi</span>
+              Neev <span style={{ fontSize: '0.9rem', color: 'var(--color-accent)', fontWeight: 600 }}>| Barabari Collective</span>
             </div>
             <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>
               Skills today. Equal tomorrow.
@@ -217,9 +217,9 @@ export const LandingPage = () => {
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <img src="/logo.svg" alt="Barabari" style={{ width: '24px', height: '24px' }} />
-          <span style={{ fontWeight: 800, color: 'var(--color-primary)', fontSize: '0.9rem' }}>Barabari</span>
+          <span style={{ fontWeight: 800, color: 'var(--color-primary)', fontSize: '0.9rem' }}>Neev</span>
           <span style={{ color: 'var(--color-text-subtle)' }}>|</span>
-          <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Project Saathi</span>
+          <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Barabari Collective</span>
         </div>
 
         <div className="handwriting" style={{ fontSize: '1.25rem', color: 'var(--color-primary)', fontWeight: 700 }}>

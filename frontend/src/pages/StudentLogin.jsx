@@ -71,7 +71,7 @@ export const StudentLogin = () => {
 
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '10px' }}>
           <Leaves style={{ width: '30px', height: '30px', color: '#FFFFFF' }} />
-          <span style={{ fontWeight: 700, fontSize: '1.1rem', letterSpacing: '-0.02em' }}>Barabari</span>
+          <span style={{ fontWeight: 700, fontSize: '1.1rem', letterSpacing: '-0.02em' }}>Neev</span>
         </div>
 
         <div className="page-enter" style={{ position: 'relative', maxWidth: '440px' }}>
@@ -82,10 +82,7 @@ export const StudentLogin = () => {
           <div style={{ fontSize: '0.84rem', opacity: 0.75 }}>Barabari Collective</div>
         </div>
 
-        <div style={{ position: 'relative', fontSize: '0.78rem', opacity: 0.6, lineHeight: 1.6, maxWidth: '400px', textWrap: 'balance' }}>
-          Project Saathi is the AI mentor for Barabari freelancers. It answers from your own project, and brings in a
-          mentor when it cannot help.
-        </div>
+        <div aria-hidden="true" style={{ height: '30px' }} />
       </div>
 
       {/* Right: choose an account */}
@@ -155,9 +152,6 @@ export const StudentLogin = () => {
             ))}
           </div>
 
-          <p style={{ fontSize: '0.74rem', color: 'var(--color-text-subtle)', marginTop: '16px', textAlign: 'center', textWrap: 'balance' }}>
-            Accounts come from the Barabari programme records. No password is needed for this demo.
-          </p>
         </div>
       </div>
     </div>

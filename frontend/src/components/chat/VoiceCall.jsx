@@ -1,20 +1,16 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Mic, MicOff, PhoneOff, Hand } from 'lucide-react';
+import { ArrowUp, Mic, MicOff, PhoneOff, Hand } from 'lucide-react';
 import { voiceService, audioUrl } from '../../services/voiceService';
 import { errorMessage } from '../../services/apiClient';
 
 const PREFERRED = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
-const SPEECH_MS = 220; // this much voice counts as her starting to talk
-const SILENCE_MS = 1400; // this much quiet after talking means she has finished
-const IDLE_RESTART_MS = 12000; // nothing said: throw the silence away and keep listening
-const MAX_TURN_MS = 60000;
+const MAX_TURN_MS = 90000; // a forgotten open mic is sent rather than recorded for ever
 
 const STATUS = {
   connecting: 'Connecting…',
   greeting: 'AI Mentor is speaking',
   listening: 'Listening',
-  hearing: 'Listening',
   thinking: 'Thinking',
   speaking: 'AI Mentor is speaking',
   muted: 'You are muted',
@@ -22,8 +18,9 @@ const STATUS = {
 
 const clock = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
-// A hands-free call with the AI mentor. One turn: she talks, a pause ends her turn, the
-// question goes to /api/voice/ask, the answer is played, and the call listens again.
+// A call with the AI mentor. One turn: she talks and taps Send (or presses Space) when she is
+// done, the question goes to /api/voice/ask, the answer is played, and the call listens again.
+// She ends her own turn: guessing it from pauses breaks in a noisy room.
 export const VoiceCall = ({ projectId, studentName, getSessionId, onTurn, onClose }) => {
   const [phase, setPhase] = useState('connecting');
   const [seconds, setSeconds] = useState(0);
@@ -42,7 +39,7 @@ export const VoiceCall = ({ projectId, studentName, getSessionId, onTurn, onClos
   // The first render's send() stays in use, so the latest callback is read through a ref
   const turn = useRef(onTurn);
   turn.current = onTurn;
-  const vad = useRef({ threshold: 0.02, speech: 0, lastVoice: 0, started: 0, talking: false, last: 0 });
+  const turnTimer = useRef(null);
 
   const go = (p) => {
     phaseRef.current = p;
@@ -50,6 +47,7 @@ export const VoiceCall = ({ projectId, studentName, getSessionId, onTurn, onClos
   };
 
   const dropRecorder = () => {
+    clearTimeout(turnTimer.current);
     const rec = recorder.current;
     recorder.current = null;
     if (rec && rec.state !== 'inactive') {
@@ -68,10 +66,18 @@ export const VoiceCall = ({ projectId, studentName, getSessionId, onTurn, onClos
     rec.onstop = () => send(new Blob(chunks, { type: rec.mimeType || 'audio/webm' }));
     recorder.current = rec;
     rec.start();
-    const now = performance.now();
-    Object.assign(vad.current, { speech: 0, lastVoice: 0, started: now, talking: false, last: now });
+    turnTimer.current = setTimeout(() => finishTurn(), MAX_TURN_MS);
     go('listening');
   }, []);
+
+  // She is done talking: stop recording, which sends the turn
+  const finishTurn = () => {
+    const rec = recorder.current;
+    if (phaseRef.current !== 'listening' || !rec || rec.state === 'inactive') return;
+    clearTimeout(turnTimer.current);
+    go('thinking');
+    rec.stop();
+  };
 
   const playThen = useCallback((url, next) => {
     const audio = new Audio(url);
@@ -107,52 +113,20 @@ export const VoiceCall = ({ projectId, studentName, getSessionId, onTurn, onClos
     }
   };
 
-  // Her turn ends when she pauses. Runs every animation frame while the call is open.
+  // The orb moves with her voice, so she can see the call hears her
   const tick = useCallback((analyser, samples) => {
     const loop = () => {
       frame.current = requestAnimationFrame(loop);
+      if (!orb.current) return;
       analyser.getFloatTimeDomainData(samples);
       let sum = 0;
       for (let i = 0; i < samples.length; i += 1) sum += samples[i] * samples[i];
       const level = Math.sqrt(sum / samples.length);
-      const v = vad.current;
-      const now = performance.now();
-      const dt = now - v.last;
-      v.last = now;
-
-      const listening = phaseRef.current === 'listening' || phaseRef.current === 'hearing';
-      if (orb.current) {
-        const size = listening ? 1 + Math.min(level * 9, 0.45) : 1;
-        orb.current.style.transform = `scale(${size.toFixed(3)})`;
-      }
-      if (!listening) return;
-
-      if (level > v.threshold) {
-        v.speech += dt;
-        v.lastVoice = now;
-        if (!v.talking && v.speech > SPEECH_MS) {
-          v.talking = true;
-          go('hearing');
-        }
-      } else if (!v.talking) {
-        v.speech = Math.max(0, v.speech - dt);
-        // The room's own noise sets the bar for what counts as a voice
-        v.threshold = Math.max(0.012, Math.min(0.06, v.threshold * 0.98 + level * 3 * 0.02));
-      }
-
-      const finished = v.talking && now - v.lastVoice > SILENCE_MS;
-      if (finished || now - v.started > MAX_TURN_MS) {
-        if (v.talking) {
-          // Leave the listening phase now, so the next frame does not stop the recorder twice
-          go('thinking');
-          recorder.current?.stop();
-        } else listen();
-      } else if (!v.talking && now - v.started > IDLE_RESTART_MS) {
-        listen();
-      }
+      const size = phaseRef.current === 'listening' ? 1 + Math.min(level * 9, 0.45) : 1;
+      orb.current.style.transform = `scale(${size.toFixed(3)})`;
     };
     loop();
-  }, [listen]);
+  }, []);
 
   useEffect(() => {
     alive.current = true;
@@ -189,7 +163,15 @@ export const VoiceCall = ({ projectId, studentName, getSessionId, onTurn, onClos
       }
     })();
 
+    const onKey = (e) => {
+      if (e.code !== 'Space' || e.repeat) return;
+      e.preventDefault();
+      finishTurn();
+    };
+    window.addEventListener('keydown', onKey);
+
     return () => {
+      window.removeEventListener('keydown', onKey);
       current = false;
       alive.current = false;
       clearInterval(timer);
@@ -206,7 +188,7 @@ export const VoiceCall = ({ projectId, studentName, getSessionId, onTurn, onClos
 
   const toggleMute = () => {
     if (phase === 'muted') return listen();
-    if (phase !== 'listening' && phase !== 'hearing') return;
+    if (phase !== 'listening') return;
     dropRecorder();
     go('muted');
   };
@@ -219,7 +201,7 @@ export const VoiceCall = ({ projectId, studentName, getSessionId, onTurn, onClos
   };
 
   const talking = phase === 'speaking' || phase === 'greeting';
-  const canMute = phase === 'listening' || phase === 'hearing' || phase === 'muted';
+  const canMute = phase === 'listening' || phase === 'muted';
 
   // On the body, so no animated or scrolling ancestor can clip the full-screen call
   return createPortal(
@@ -240,8 +222,11 @@ export const VoiceCall = ({ projectId, studentName, getSessionId, onTurn, onClos
         </div>
         <div style={{ fontSize: '1.05rem', fontWeight: 600 }} className={phase === 'thinking' ? 'call-shimmer' : ''}>
           {STATUS[phase]}
-          {phase === 'hearing' && <span style={{ opacity: 0.7, fontWeight: 400 }}> · pause when you are done</span>}
         </div>
+        <button type="button" className="call-send" onClick={finishTurn} style={{ visibility: phase === 'listening' ? 'visible' : 'hidden' }}>
+          <ArrowUp size={16} strokeWidth={2.4} /> Send when you are done
+          <span className="call-key">Space</span>
+        </button>
       </div>
 
       <div style={{ width: 'min(680px, 100%)', minHeight: '120px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '10px' }}>

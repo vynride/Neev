@@ -7,7 +7,7 @@ import { relativeDay } from '../../services/format';
 import { useAuth } from '../../context/AuthContext';
 
 // Fired by the chat page when a chat is created, so the list here stays current
-export const SESSIONS_CHANGED = 'saathi:sessions-changed';
+export const SESSIONS_CHANGED = 'neev:sessions-changed';
 
 const NAV_ITEMS = [
   { label: 'Dashboard', path: '/student/dashboard', icon: LayoutDashboard },
@@ -69,12 +69,12 @@ export const StudentLayout = () => {
       >
         {/* Brand */}
         <div style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <img src="/logo.svg" alt="Barabari" style={{ width: '32px', height: '32px' }} />
+          <img src="/logo.svg" alt="Neev" style={{ width: '32px', height: '32px' }} />
           <div>
             <div style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--color-primary)', letterSpacing: '-0.02em' }}>
-              Barabari
+              Neev
             </div>
-            <div style={{ fontSize: '0.68rem', color: 'var(--color-text-subtle)' }}>Project Saathi</div>
+            <div style={{ fontSize: '0.68rem', color: 'var(--color-text-subtle)' }}>by Barabari Collective</div>
           </div>
         </div>
 
