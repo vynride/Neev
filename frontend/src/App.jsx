@@ -17,6 +17,8 @@ import Escalations from './pages/mentor/Escalations';
 import EscalationDetails from './pages/mentor/EscalationDetails';
 import Students from './pages/mentor/Students';
 import StudentDetails from './pages/mentor/StudentDetails';
+import Requirements from './pages/mentor/Requirements';
+import RunTrails from './pages/mentor/RunTrails';
 
 // Route guard: signed in, and in the right role for this part of the app
 const ProtectedRoute = ({ roles, children }) => {
@@ -72,6 +74,8 @@ export default function App() {
             <Route path="dashboard" element={<MentorDashboard />} />
             <Route path="escalations" element={<Escalations />} />
             <Route path="escalations/:id" element={<EscalationDetails />} />
+            <Route path="requirements" element={<Requirements />} />
+            <Route path="runs" element={<RunTrails />} />
             <Route path="students" element={<Students />} />
             <Route path="students/:id" element={<StudentDetails />} />
           </Route>
@@ -83,4 +87,3 @@ export default function App() {
     </AuthProvider>
   );
 }
-

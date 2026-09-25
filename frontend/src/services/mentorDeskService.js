@@ -38,4 +38,60 @@ export const mentorDeskService = {
   async getMetrics() {
     return (await apiClient.get('/api/mentor/metrics')).data;
   },
+
+  async listRequirements(projectId) {
+    return (await apiClient.get(`/api/mentor/projects/${projectId}/requirements`)).data;
+  },
+
+  async getRequirement(projectId, requirementId) {
+    return (await apiClient.get(`/api/mentor/projects/${projectId}/requirements/${requirementId}`)).data;
+  },
+
+  async createRequirement(projectId, draft) {
+    return (await apiClient.post(`/api/mentor/projects/${projectId}/requirements`, draft)).data;
+  },
+
+  async saveRequirement(projectId, requirementId, draft) {
+    return (await apiClient.put(`/api/mentor/projects/${projectId}/requirements/${requirementId}`, draft)).data;
+  },
+
+  async publishRequirement(projectId, requirementId, expectedRevision) {
+    return (await apiClient.post(`/api/mentor/projects/${projectId}/requirements/${requirementId}/publish`, { expected_revision: expectedRevision })).data;
+  },
+
+  async listRuns(projectId, q = '') {
+    return (await apiClient.get('/api/mentor/runs', { params: { project_id: projectId, q } })).data;
+  },
+
+  async getRun(runId) {
+    return (await apiClient.get(`/api/mentor/runs/${runId}`)).data;
+  },
+
+  async reviewRun(runId, review) {
+    return (await apiClient.post(`/api/mentor/runs/${runId}/review`, review)).data;
+  },
+
+  async listEvalCases(projectId) {
+    return (await apiClient.get('/api/mentor/evals/cases', { params: { project_id: projectId } })).data;
+  },
+
+  async createEvalCase(runId, expectedRefs, forbiddenText, requiredText) {
+    return (await apiClient.post(`/api/mentor/evals/cases/from-run/${runId}`, {
+      expected_refs: expectedRefs, forbidden_text: forbiddenText, required_text: requiredText
+    })).data;
+  },
+
+  async updateEvalCase(caseId, expectedRefs, forbiddenText, requiredText) {
+    return (await apiClient.put(`/api/mentor/evals/cases/${caseId}`, {
+      expected_refs: expectedRefs, forbidden_text: forbiddenText, required_text: requiredText
+    })).data;
+  },
+
+  async getLatestEval(projectId) {
+    return (await apiClient.get('/api/mentor/evals/latest', { params: { project_id: projectId } })).data;
+  },
+
+  async listAuditEvents(projectId) {
+    return (await apiClient.get('/api/mentor/runs/audit/events', { params: { project_id: projectId } })).data;
+  },
 };

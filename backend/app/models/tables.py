@@ -1,7 +1,7 @@
 from datetime import date, datetime, timezone
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -137,6 +137,16 @@ class SharedAnswer(Base):
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class SharedAnswerInvalidation(Base):
+    """Preserve old shared answers while excluding them after a requirement change."""
+
+    __tablename__ = "shared_answer_invalidations"
+
+    answer_id: Mapped[str] = mapped_column(String, primary_key=True)
+    requirement_id: Mapped[str] = mapped_column(String)
+    invalidated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class Chunk(Base):
     """A searchable piece of a project document or meeting transcript."""
 
@@ -149,6 +159,42 @@ class Chunk(Base):
     ref: Mapped[str] = mapped_column(String)  # citation target, e.g. "brief.md#Goals"
     text: Mapped[str] = mapped_column(Text)
     embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIM), nullable=True)
+
+
+class Requirement(Base):
+    """Current published requirement plus a mentor's unpublished edit."""
+
+    __tablename__ = "requirements"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    project_id: Mapped[str] = mapped_column(ForeignKey("projects.id"), index=True)
+    status: Mapped[str] = mapped_column(String, default="draft")
+    version: Mapped[int] = mapped_column(Integer, default=0)
+    title: Mapped[str] = mapped_column(String, default="")
+    body: Mapped[str] = mapped_column(Text, default="")
+    effective_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    draft_title: Mapped[str | None] = mapped_column(String, nullable=True)
+    draft_body: Mapped[str | None] = mapped_column(Text, nullable=True)
+    draft_effective_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    draft_revision: Mapped[int] = mapped_column(Integer, default=1)
+    edited_by: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    published_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class RequirementVersion(Base):
+    __tablename__ = "requirement_versions"
+    __table_args__ = (UniqueConstraint("requirement_id", "version"),)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    requirement_id: Mapped[str] = mapped_column(ForeignKey("requirements.id"), index=True)
+    version: Mapped[int] = mapped_column(Integer)
+    title: Mapped[str] = mapped_column(String)
+    body: Mapped[str] = mapped_column(Text)
+    effective_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    published_by: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class MetricEvent(Base):

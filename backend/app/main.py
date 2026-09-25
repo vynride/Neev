@@ -7,7 +7,7 @@ from sqlalchemy import text
 from app.config import get_settings
 from app.db.mongo import get_mongo, init_mongo
 from app.db.postgres import engine, init_postgres
-from app.routers import auth, chat, memory, mentor, projects, voice
+from app.routers import auth, chat, evals, memory, mentor, projects, requirements, run_traces, voice
 
 
 @asynccontextmanager
@@ -32,6 +32,9 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(projects.router)
 app.include_router(mentor.router)
+app.include_router(requirements.router)
+app.include_router(run_traces.router)
+app.include_router(evals.router)
 app.include_router(chat.router)
 app.include_router(memory.router)
 app.include_router(voice.router)

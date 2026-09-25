@@ -58,7 +58,9 @@ async def search_chunks(db: AsyncSession, project_id: str, query: str, k: int = 
         q = func.to_tsquery("english", tsq)
         stmt = (
             select(Chunk)
-            .where(Chunk.project_id == project_id, tsv.op("@@")(q))
+            .where(
+                Chunk.project_id == project_id, Chunk.source_type != "requirement", tsv.op("@@")(q)
+            )
             .order_by(func.ts_rank(tsv, q).desc())
             .limit(k * 2)
         )
@@ -70,7 +72,11 @@ async def search_chunks(db: AsyncSession, project_id: str, query: str, k: int = 
     if vec is not None:
         stmt = (
             select(Chunk)
-            .where(Chunk.project_id == project_id, Chunk.embedding.is_not(None))
+            .where(
+                Chunk.project_id == project_id,
+                Chunk.source_type != "requirement",
+                Chunk.embedding.is_not(None),
+            )
             .order_by(Chunk.embedding.cosine_distance(vec))
             .limit(k * 2)
         )

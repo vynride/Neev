@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime, timezone
 
 from app.db.mongo import SESSIONS, get_mongo
+from app.services.run_traces import current_run, record_event
 
 
 def _now() -> datetime:
@@ -30,15 +31,20 @@ async def get_or_create(session_id: str | None, student_id: str, project_id: str
         "turns": [],
     }
     await coll.insert_one(session)
+    record_event("session.created", output={"session_id": session["_id"], "project_id": project_id})
     return session
 
 
 async def append_turn(session_id: str, turn: dict) -> dict:
     turn = {"id": new_id("m"), "created_at": _now(), **turn}
+    run = current_run()
+    if run is not None:
+        turn["trace_id"] = run.trace_id
     await get_mongo()[SESSIONS].update_one(
         {"_id": session_id},
         {"$push": {"turns": turn}, "$set": {"updated_at": _now(), "summarised": False}},
     )
+    record_event("session.turn_added", output={"session_id": session_id, "turn": turn})
     return turn
 
 

@@ -15,6 +15,7 @@ from openai import OpenAIError
 from app.config import get_settings
 from app.db.mongo import SESSION_SUMMARIES, SESSIONS, STUDENT_MEMORY, get_mongo
 from app.llm.client import get_llm
+from app.services.run_traces import RunTrace, persist, record_event, use_run
 
 log = logging.getLogger(__name__)
 
@@ -68,6 +69,15 @@ async def note_struggle(student_id: str, category: str, topic: str) -> None:
     await coll.update_one(
         {"_id": student_id}, {"$set": {"struggles": struggles, "markdown": markdown}}, upsert=True
     )
+    record_event(
+        "student_memory.struggle_updated",
+        output={
+            "student_id": student_id,
+            "category": category,
+            "topic": topic,
+            "markdown": markdown,
+        },
+    )
 
 
 async def set_student_memory(student_id: str, markdown: str, editor: str) -> None:
@@ -106,55 +116,67 @@ async def summarise_pending(student_id: str, project_id: str, current_session_id
         if len(turns) < 2:
             continue
         transcript = "\n".join(f"{t['role']}: {t['content'][:1500]}" for t in turns)
-        try:
-            summary = (
-                await llm.complete(
-                    model=fast,
-                    system=SUMMARY_SYSTEM,
-                    messages=[{"role": "user", "content": transcript}],
-                    effort="low",
-                    max_output_tokens=500,
-                )
-            ).text.strip()
-            doc = await mongo[STUDENT_MEMORY].find_one({"_id": student_id}) or {}
-            updated = (
-                await llm.complete(
-                    model=fast,
-                    system=MEMORY_SYSTEM,
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": f"# Current file\n{doc.get('markdown', '')}\n\n"
-                            f"# New session summary\n{summary}",
-                        }
-                    ],
-                    effort="low",
-                    max_output_tokens=900,
-                )
-            ).text.strip()
-        except OpenAIError:
-            log.warning("Could not summarise session %s", session["_id"], exc_info=True)
-            continue
-
-        await mongo[SESSION_SUMMARIES].update_one(
-            {"_id": session["_id"]},
-            {
-                "$set": {
-                    "student_id": student_id,
-                    "project_id": project_id,
-                    "summary": summary,
-                    "created_at": session["updated_at"],
-                }
-            },
-            upsert=True,
+        trace = RunTrace(
+            project_id=project_id,
+            actor_id=student_id,
+            question=f"Summarise session {session['_id']}",
         )
-        if updated:
-            # The struggles section is owned by note_struggle; re-apply it over the LLM's text
-            struggles = _render_struggles(doc.get("struggles", {}))
-            markdown = _replace_section(updated, STRUGGLES_HEADING, struggles)
-            await mongo[STUDENT_MEMORY].update_one(
-                {"_id": student_id}, {"$set": {"markdown": markdown}}, upsert=True
-            )
-        await mongo[SESSIONS].update_one({"_id": session["_id"]}, {"$set": {"summarised": True}})
-        done += 1
+        trace.session_id = session["_id"]
+        with use_run(trace):
+            record_event("agent.memory.input", input={"transcript": transcript})
+            try:
+                summary = (
+                    await llm.complete(
+                        model=fast,
+                        system=SUMMARY_SYSTEM,
+                        messages=[{"role": "user", "content": transcript}],
+                        effort="low",
+                        max_output_tokens=500,
+                    )
+                ).text.strip()
+                doc = await mongo[STUDENT_MEMORY].find_one({"_id": student_id}) or {}
+                updated = (
+                    await llm.complete(
+                        model=fast,
+                        system=MEMORY_SYSTEM,
+                        messages=[
+                            {
+                                "role": "user",
+                                "content": f"# Current file\n{doc.get('markdown', '')}\n\n"
+                                f"# New session summary\n{summary}",
+                            }
+                        ],
+                        effort="low",
+                        max_output_tokens=900,
+                    )
+                ).text.strip()
+                await mongo[SESSION_SUMMARIES].update_one(
+                    {"_id": session["_id"]},
+                    {
+                        "$set": {
+                            "student_id": student_id,
+                            "project_id": project_id,
+                            "summary": summary,
+                            "created_at": session["updated_at"],
+                        }
+                    },
+                    upsert=True,
+                )
+                if updated:
+                    struggles = _render_struggles(doc.get("struggles", {}))
+                    markdown = _replace_section(updated, STRUGGLES_HEADING, struggles)
+                    await mongo[STUDENT_MEMORY].update_one(
+                        {"_id": student_id}, {"$set": {"markdown": markdown}}, upsert=True
+                    )
+                await mongo[SESSIONS].update_one(
+                    {"_id": session["_id"]}, {"$set": {"summarised": True}}
+                )
+                trace.outcome = "summarised"
+                record_event("agent.memory.updated", output={"summary": summary, "memory": updated})
+                done += 1
+            except OpenAIError as exc:
+                trace.outcome, trace.error = "error", repr(exc)
+                log.warning("Could not summarise session %s", session["_id"], exc_info=True)
+            finally:
+                await persist(trace)
     return done

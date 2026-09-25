@@ -5,6 +5,7 @@ resource links that are not in `seen` are dropped, so the model cannot cite what
 """
 
 import json
+import time
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -16,8 +17,9 @@ from app.agent.search import search_chunks, search_kb
 from app.config import get_settings
 from app.db.mongo import REPO_MAPS, SESSION_SUMMARIES, get_mongo
 from app.ingest import repo
-from app.integrations import clickup
 from app.models import StudentScore, Task
+from app.services.requirements import requirement_ref, search_requirements
+from app.services.run_traces import record_event
 
 
 @dataclass
@@ -118,10 +120,22 @@ def tools_for(scope: str) -> list[dict]:
 
 
 async def _search_docs(ctx: ToolContext, query: str) -> str:
+    requirements = await search_requirements(ctx.db, ctx.project_id, query)
     chunks = await search_chunks(ctx.db, ctx.project_id, query)
-    if not chunks:
+    if not chunks and not requirements:
         return "No matching passages in the project documents or meetings."
     out = []
+    for req in requirements:
+        ref = requirement_ref(req)
+        ctx.seen_refs.add(ref)
+        effective = req.effective_date.isoformat() if req.effective_date else "not specified"
+        published = req.published_at.isoformat() if req.published_at else "unknown"
+        text = f"{req.title}\nEffective date: {effective}\nPublished: {published}\n{req.body}"
+        ctx.excerpts.append({"type": "requirement", "ref": ref, "text": text[:600]})
+        out.append(
+            f"[ref: {ref}] (approved requirement, version {req.version}; "
+            f"overrides older documents)\n{text}"
+        )
     for c in chunks:
         ctx.seen_refs.add(c.ref)
         ctx.excerpts.append({"type": c.source_type, "ref": c.ref, "text": c.text[:600]})
@@ -160,7 +174,6 @@ def _grep(ctx: ToolContext, pattern: str, glob: str = "*") -> str:
 
 
 async def _get_tasks(ctx: ToolContext, only_open: bool) -> str:
-    await clickup.sync_project_tasks(ctx.db, ctx.project_id)  # no-op unless ClickUp is enabled
     stmt = select(Task).where(Task.project_id == ctx.project_id).order_by(Task.due_date)
     tasks = (await ctx.db.execute(stmt)).scalars().all()
     if only_open:
@@ -238,6 +251,7 @@ async def _web_search(ctx: ToolContext, query: str) -> str:
 
 
 async def run_tool(ctx: ToolContext, name: str, args: dict) -> str:
+    started = time.perf_counter()
     try:
         match name:
             case "search_docs":
@@ -267,4 +281,10 @@ async def run_tool(ctx: ToolContext, name: str, args: dict) -> str:
     except (repo.RepoError, OSError, httpx.HTTPError) as exc:
         result = f"Tool error: {exc}"
     ctx.calls.append({"name": name, "args": args, "result_preview": result[:300]})
+    record_event(
+        "agent.tool.call",
+        input={"name": name, "args": args},
+        output=result[:12000],
+        attributes={"duration_ms": round((time.perf_counter() - started) * 1000)},
+    )
     return result[:12000]

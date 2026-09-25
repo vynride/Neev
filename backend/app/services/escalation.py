@@ -7,8 +7,8 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent.search import KB_MATCH_THRESHOLD, embed_or_none, search_kb
-from app.integrations import clickup
-from app.models import Assignment, KBEntry, MetricEvent, Project, Ticket, User
+from app.models import Assignment, KBEntry, MetricEvent, Ticket
+from app.services.run_traces import record_event
 
 
 def _id(prefix: str) -> str:
@@ -18,6 +18,9 @@ def _id(prefix: str) -> str:
 async def record(db: AsyncSession, kind: str, project_id: str, student_id: str) -> None:
     db.add(MetricEvent(kind=kind, project_id=project_id, student_id=student_id))
     await db.commit()
+    record_event(
+        "metric.recorded", output={"kind": kind, "project_id": project_id, "student_id": student_id}
+    )
 
 
 async def mentor_for(db: AsyncSession, project_id: str, student_id: str) -> str:
@@ -70,12 +73,19 @@ async def create_ticket(
         )
     )
     await db.commit()
-    if kind == "ticket":
-        student = await db.get(User, student_id)
-        project = await db.get(Project, project_id)
-        await clickup.open_support_task(
-            ticket, student.name if student else student_id, project.name if project else project_id
-        )
+    record_event(
+        "ticket.created",
+        output={
+            "id": ticket.id,
+            "kind": kind,
+            "project_id": project_id,
+            "student_id": student_id,
+            "mentor_id": ticket.mentor_id,
+            "question": question,
+            "draft_answer": draft_answer,
+            "excerpts": excerpts,
+        },
+    )
     return ticket
 
 
@@ -97,9 +107,10 @@ async def resolve_ticket(db: AsyncSession, ticket: Ticket, answer: str) -> KBEnt
         entry.embedding = await embed_or_none(f"{ticket.question}\n{answer}")
         db.add(entry)
     await db.commit()
-    if ticket.kind == "ticket":
-        mentor = await db.get(User, ticket.mentor_id)
-        await clickup.close_support_task(ticket.id, mentor.name if mentor else "mentor", answer)
+    record_event(
+        "ticket.resolved",
+        output={"id": ticket.id, "answer": answer, "kb_entry_id": entry.id if entry else None},
+    )
     return entry
 
 

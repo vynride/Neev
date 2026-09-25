@@ -22,6 +22,11 @@ MEETINGS = "meetings"
 DOCUMENTS = "documents"
 REPO_MAPS = "repo_maps"
 INTEGRATIONS = "integrations"  # ids of things we created in ClickUp
+RUN_TRACES = "run_traces"
+RUN_TRACE_EVENTS = "run_trace_events"
+EVAL_CASES = "eval_cases"
+EVAL_RUNS = "eval_runs"
+AUDIT_EVENTS = "audit_events"
 
 
 async def init_mongo() -> None:
@@ -30,3 +35,9 @@ async def init_mongo() -> None:
     await db[SESSION_SUMMARIES].create_index([("student_id", 1), ("project_id", 1)])
     await db[MEETINGS].create_index([("project_id", 1), ("started_at", -1)])
     await db[DOCUMENTS].create_index([("project_id", 1)])
+    await db[RUN_TRACES].create_index([("project_id", 1), ("created_at", -1)])
+    await db[RUN_TRACES].create_index([("actor_id", 1), ("created_at", -1)])
+    await db[RUN_TRACE_EVENTS].create_index([("trace_id", 1), ("sequence", 1)])
+    await db[EVAL_CASES].create_index([("project_id", 1), ("active", 1)])
+    await db[EVAL_RUNS].create_index([("created_at", -1)])
+    await db[AUDIT_EVENTS].create_index([("project_id", 1), ("created_at", -1)])

@@ -21,7 +21,10 @@ from app.models import (
     KBEntry,
     MetricEvent,
     Project,
+    Requirement,
+    RequirementVersion,
     SharedAnswer,
+    SharedAnswerInvalidation,
     StudentScore,
     Task,
     Ticket,
@@ -80,7 +83,8 @@ async def seed() -> None:
 
     async with SessionLocal() as db:
         for model in (
-            MetricEvent, Ticket, Chunk, KBEntry, SharedAnswer, Task, Assignment, StudentScore
+            MetricEvent, RequirementVersion, Requirement, SharedAnswerInvalidation,
+            Ticket, Chunk, KBEntry, SharedAnswer, Task, Assignment, StudentScore
         ):  # fmt: skip
             await db.execute(delete(model))
         await db.execute(delete(Project))
